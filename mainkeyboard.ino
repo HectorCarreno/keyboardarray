@@ -4,11 +4,9 @@
 #define size_array(x)   sizeof(x) / sizeof(x[0])
 #define period_t    1000
 
-int COLUMNS[] = {36, 34, 32, 30, 28, 26, 24, 22, 29, 31};
-
-int ROWS[] = {53, 52, 50, 48, 46, 44, 42, 40, 38, 23, 37, 25, 35, 27, 33};
-
-int idx, jdx, tdx;
+uint8_t COLUMNS[] = {36, 34, 32, 30, 28, 26, 24, 22, 29, 31};
+uint8_t ROWS[] = {53, 52, 50, 48, 46, 44, 42, 40, 38, 23, 37, 25, 35, 27, 33};
+uint8_t idx, jdx, tdx;
 
 void setup() {
   // put your setup code here, to run once:
