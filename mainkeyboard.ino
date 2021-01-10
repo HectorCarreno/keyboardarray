@@ -1,7 +1,6 @@
 #include <string.h> // add string library
 #include <arduino.h> // add arduino library
 #define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
-//#define BTN {"ENG", "BLEED", "PRESS", "ELEC", "HYD", "FUEL", "APU", "COND", "DOOR", "WHELL", "F/CTL", "ALL", "CLR", "TO CONFIG", "SYS", "RCL", "EMER/CANC", "CLR"}
 uint8_t COLUMNS[] = {28, 30, 32, 34, 36, 38}; // columns pins assignment
 uint8_t ROWS[] = {26, 24, 22}; // rows pins assignment
 uint8_t idx, jdx, tdx; // counters index
