@@ -4,7 +4,9 @@
 uint8_t COLUMNS[] = {28, 30, 32, 34, 36, 38}; // columns pins assignment
 uint8_t ROWS[] = {26, 24, 22}; // rows pins assignment
 uint8_t idx, jdx, tdx; // counters index
-const char *BTN[size_array(ROWS)][size_array(COLUMNS)] = {"ENG", "BLEED", "PRESS", "ELEC", "HYD", "FUEL", "APU", "COND", "DOOR", "WHELL", "F/CTL", "ALL", "CLR", "TO CONFIG", "SYS", "RCL", "EMER/CANC", "CLR"};
+const char *BTN[size_array(ROWS)][size_array(COLUMNS)] = {"ENG", "BLEED", "PRESS", "ELEC", "HYD", "FUEL",
+                                                          "APU", "COND", "DOOR", "WHELL", "F/CTL", "ALL",
+                                                        "CLR", "TO CONFIG", "SYS", "RCL", "EMER/CANC", "CLR"};
 // above definition assign rows x columns position with each button respectively 
 
 void setup(){ // configuration of MCU
@@ -16,11 +18,11 @@ void setup(){ // configuration of MCU
   Serial.print("Starting MainKeyboard") ; // it works for beautify the code, there are so much of this on whole code
   for (idx = 0; idx < random(10, 30); idx++){
     Serial.print(".");
-    delay(250);
+    delay(50);
   }
   Serial.print("Done!");
   Serial.println(".");
-  delay(1000);
+  delay(200);
   Serial.print("Ready for press button!");
   for (idx = 0; idx < random(4, 10); idx++){
     Serial.print(".");
@@ -89,7 +91,7 @@ static void initializing_pins(){
     Serial.print("Set pin ");
     Serial.println(ROWS[idx]);
     pinMode(ROWS[idx], INPUT_PULLUP);
-    delay(100);
+    delay(50);
   }
   for (idx = 0; idx < 2; idx++){
     Serial.println();
@@ -97,10 +99,10 @@ static void initializing_pins(){
   Serial.print("Setting outputs");
   for (idx = 0; idx < random(4, 10); idx++){
     Serial.print(".");
-    delay(100);
+    delay(50);
   }
   Serial.println(".");
-  delay(1000);
+  delay(200);
   for (idx = 0; idx < size_array(COLUMNS); idx++){ // Here configure the columns pin as output
     Serial.print("Set pin ");
     Serial.println(COLUMNS[idx]);
@@ -127,8 +129,8 @@ void loop(){
     for (idx = 0; idx < size_array(ROWS); idx++){
       if (!digitalRead(ROWS[idx])){
         Serial.println(BTN[idx][jdx]); //  show the button pressed in real time
-        delay(500);
         Serial.flush();
+        while(!digitalRead(ROWS[idx])); // this function avoid issues at press button
       }
     }
   }
