@@ -1,37 +1,35 @@
-#include <string.h> // add string library
-#include <arduino.h> // add arduino library
-#define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
-uint8_t COLUMNS[] = {28, 30, 32, 34, 36, 38}; // columns pins assignment
-uint8_t ROWS[] = {26, 24, 22}; // rows pins assignment
-uint8_t idx, jdx, tdx; // counters index
-const char *BTN[size_array(ROWS)][size_array(COLUMNS)] = {"ENG", "BLEED", "PRESS", "ELEC", "HYD", "FUEL",
-                                                          "APU", "COND", "DOOR", "WHELL", "F/CTL", "ALL",
-                                                        "CLR", "TO CONFIG", "SYS", "RCL", "EMER/CANC", "CLR"};
-// above definition assign rows x columns position with each button respectively 
+#include "keyboardComponents.h"
 
 void setup(){ // configuration of MCU
   // put your setup code here, to run once:
   Serial.begin(115200); // begin serial communication
+  Timer1.attachInterrupt(ISR_time);
+  Timer1.initialize(100);
   array_initialise(); // initialise the array features
   Serial.println(); 
   initializing_pins(); // initialising the pins operation mode configuration
-  Serial.print("Starting MainKeyboard") ; // it works for beautify the code, there are so much of this on whole code
+  led_btn_initilise();
+  Serial.print("\n\n Starting MainKeyboard") ; // it works for beautify the code, there are so much of this on whole code
   for (idx = 0; idx < random(10, 30); idx++){
     Serial.print(".");
-    delay(50);
+    delay(20);
   }
   Serial.print("Done!");
   Serial.println(".");
-  delay(200);
-  Serial.print("Ready for press button!");
+  delay(20);
+  Serial.print("\n\n Ready for press button!");
   for (idx = 0; idx < random(4, 10); idx++){
     Serial.print(".");
-    delay(50);
+    delay(20);
   }
   for (idx = 0; idx < 3; idx++){
     Serial.println();
   }
-  Serial.print("-> ");
+  Serial.print("\n -> \n\r");
+}
+
+static void ISR_time(){
+  time_counter++;
 }
 
 static void array_initialise(){
@@ -75,39 +73,39 @@ static void initializing_pins(){
     delay(10);
   }
   Serial.println("#");
-  delay(random(500, 1000));
+  delay(random(50, 200));
   for (idx = 0; idx < 4; idx++){
     Serial.println("");
   }
   delay(10);
-  Serial.print("Setting inputs");
+  Serial.print("# Configuring the push button inputs");
   for (idx = 0; idx < 10; idx++){
     Serial.print(".");
     delay(10);
   }
   Serial.println(".");
-  delay(random(250, 1000));
+  delay(random(50, 200));
   for (idx = 0; idx < size_array(ROWS); idx++){ // Here is configurated the rows pin as inputs with pull up resistors
     Serial.print("Set pin ");
     Serial.println(ROWS[idx]);
     pinMode(ROWS[idx], INPUT_PULLUP);
-    delay(50);
+    delay(20);
   }
   for (idx = 0; idx < 2; idx++){
     Serial.println();
   }
-  Serial.print("Setting outputs");
+  Serial.print("# Configuring the push button outputs");
   for (idx = 0; idx < random(4, 10); idx++){
     Serial.print(".");
-    delay(50);
+    delay(10);
   }
   Serial.println(".");
-  delay(200);
+  delay(10);
   for (idx = 0; idx < size_array(COLUMNS); idx++){ // Here configure the columns pin as output
     Serial.print("Set pin ");
     Serial.println(COLUMNS[idx]);
     pinMode(COLUMNS[idx], OUTPUT);
-    delay(100);
+    delay(20);
     digitalWrite(COLUMNS[idx], LOW);
   }
   for (idx = 0; idx < 2; idx++){
@@ -123,14 +121,17 @@ static void pin_rst(){
 
 void loop(){
   // put your main code here, to run repeatedly:
+  led_swept_t();
   for (jdx = 0; jdx < size_array(COLUMNS); jdx++){
     pin_rst(); // reseting the columns
     digitalWrite(COLUMNS[jdx], LOW);
     for (idx = 0; idx < size_array(ROWS); idx++){
       if (!digitalRead(ROWS[idx])){
-        Serial.println(BTN[idx][jdx]); //  show the button pressed in real time
+        toogle_btn_t(BTN[idx][jdx]);
         Serial.flush();
-        while(!digitalRead(ROWS[idx])); // this function avoid issues at press button
+        while(!digitalRead(ROWS[idx])){ ; // this function avoid issues at press button
+          led_swept_t();
+        }
       }
     }
   }
