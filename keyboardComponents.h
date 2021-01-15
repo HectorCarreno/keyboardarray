@@ -5,6 +5,7 @@
 * Components: leds handler
 *             button handler
 *             toggle handler
+*             serial receive handler
 *             declaration initialise functions
 * This is a open source developed by the author, any issues 
 * can shows dependig of each application. This components was 
@@ -17,7 +18,10 @@
 #include <arduino.h> // add arduino library
 #include <TimerOne.h> // add timer one library
 #include <string.h> // add string library
+
 #define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
+#define leds_Qty 14 // quantity of leds in the board
+#define str_buf 16
 
 uint8_t CATHODES[] = {41, 39, 37, 35, 33, 31}; // cathodes pins assignment
 uint8_t ANODES[] = {23, 25, 27}; // anodes pins assignment
@@ -25,12 +29,16 @@ uint8_t COLUMNS[] = {28, 30, 32, 34, 36, 38}; // columns pins assignment
 uint8_t ROWS[] = {26, 24, 22}; // rows pins assignment
 uint8_t idx, jdx, tdx, rdx; // counters index
 long int time_counter = 0; // define time counter data type and value
+char *char_ptr = NULL;
+char char_string[str_buf] = ""; // a char array to hold incoming data
+bool stringComplete = false;  // whether the string is complete
 const char *BTN[size_array(ROWS)][size_array(COLUMNS)] = {"ENG", "BLEED", "PRESS", "ELEC", "HYD", "FUEL",
                                                           "APU", "COND", "DOOR", "WHELL", "F/CTL", "ALL",
                                                         "CLR_L", "TO CONFIG", "SYS", "RCL", "EMER/CANC", "CLR_R"};
 // above definition assign rows x columns position with each button respectively 
 
 typedef int8_t atm_err_t; // define type of data to handle different needs
+typedef volatile bool FAIL_STATE; 
 
 enum {
   off_mode,
@@ -63,12 +71,38 @@ struct led_btn_t // structure of one led button
   uint8_t btn_id = NULL; // pin identification 
 };
 
+volatile bool serialEvent_handler() {
+  idx = 0; // index for make the swept in the serial port
+  if (Serial.available() > 0) // ask if serial available have any data
+  {
+    memset(char_string, NULL, str_buf); // clear the string
+    while (Serial.available()) { 
+    delayMicroseconds(200);
+    char_string[idx] = (char)Serial.read(); // add it to the inputString:
+    // if the incoming character is a newline, set a flag so the main loop can, do something about it:
+    if (char_string[idx] == '\n') { // wait for new line character to activate the flag
+      stringComplete = true;
+    }
+      idx++; // increase the index
+    }
+  }
+  return stringComplete; // return flag to function value
+}
+
+static char* serialReceive(){
+  // print the string when a newline arrives:
+  char_ptr = NULL; // clear char pointer
+  char_ptr = char_string; // store string received from serial port in char pointer
+  stringComplete = false; // clean flag
+  return char_ptr; // return the string received in pointer assigned to function
+}
+
 // Leds pins assignment with the array conections
 //led_btn_t push_led_btn[14] = {{0,0,0,BTN[0][0]}, {0,1,0,BTN[0][1]}, {0,2,0,BTN[0][2]}, {0,3,0,BTN[0][3]}, {0,4,0,BTN[0][4]}, {0,5,0,BTN[0][5]},
 //                              {1,0,0,BTN[1][0]}, {1,1,0,BTN[1][1]}, {1,2,0,BTN[1][2]}, {1,3,0,BTN[1][3]}, {1,4,0,BTN[1][4]}, 
 //                              {2,0,0,BTN[2][0]},                    {2,2,0,BTN[2][2]},                                       {2,5,0,BTN[2][5]}};
 
-led_btn_t push_led_btn[14]; //  array of structures to quantify the button with respective leds
+led_btn_t push_led_btn[leds_Qty]; //  array of structures to quantify the button with respective leds
 
 static void array_initialise(){ // initialise function shows the button array configuration
   Serial.println("-> Keyboard array was configurated thus: "); 
@@ -192,7 +226,7 @@ static void led_btn_initilise(){ // initialise the led pin accord each button
 }
 
 static void testing_led_array_t(){ // test all led button array
-  Serial.println("\n\n\n Testing leds.....");
+  Serial.print("\n\n Testing leds..... \r\n");
   for (idx = 0; idx < 2; ++idx){  
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
       digitalWrite(push_led_btn[rdx].led_row, on_mode);
@@ -226,21 +260,22 @@ static void testing_led_array_t(){ // test all led button array
 
 static void toggle_led(led_btn_t led_t){ // Toggle led pins states
   atm_err_t err = led_t.btn_id;
-  if (err != -1){ // avoid error reading led state 
-    //Serial.println("ERROR - none key available");
-    push_led_btn[led_t.btn_id].led_state = !push_led_btn[led_t.btn_id].led_state; // toggle state for each led button
+  if (err == -1){
+    Serial.println("error - button name not able");
+  } else { // avoid error reading led state 
+    push_led_btn[led_t.btn_id].led_state = led_t.led_state; // toggle state for each led button
     //Serial.print("\n # STATE ");
     //Serial.println(push_led_btn[led_t.btn_id].led_state);
     if (push_led_btn[led_t.btn_id].led_state){ // set on mode for led button
       //Serial.print("\n Activate led \n");
-      digitalWrite(push_led_btn[led_t.btn_id].led_column, !push_led_btn[led_t.btn_id].led_state);
-      digitalWrite(push_led_btn[led_t.btn_id].led_row, push_led_btn[led_t.btn_id].led_state);
+      digitalWrite(push_led_btn[led_t.btn_id].led_column, !led_t.led_state);
+      digitalWrite(push_led_btn[led_t.btn_id].led_row, led_t.led_state);
     } else if (!push_led_btn[led_t.btn_id].led_state){ // set off mode for led button
       //Serial.print("\n deactivate led \n");
-      digitalWrite(push_led_btn[led_t.btn_id].led_column, !push_led_btn[led_t.btn_id].led_state);
-      digitalWrite(push_led_btn[led_t.btn_id].led_row, push_led_btn[led_t.btn_id].led_state);
+      digitalWrite(push_led_btn[led_t.btn_id].led_column, !led_t.led_state);
+      digitalWrite(push_led_btn[led_t.btn_id].led_row, led_t.led_state);
     }
-  }
+  } 
   for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){ // set off mode all led button
       digitalWrite(push_led_btn[rdx].led_row, off_mode);
       digitalWrite(push_led_btn[rdx].led_column, on_mode);
@@ -252,7 +287,7 @@ static void led_swept_t(){ // swept each led button state
       if (push_led_btn[rdx].led_state){ // just when the state is high, set the led button in on mode
           digitalWrite(push_led_btn[rdx].led_row, push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, !push_led_btn[rdx].led_state);
-          delayMicroseconds(400); // return to off mode for avoid error with two or more started leds
+          delayMicroseconds(350); // return to off mode for avoid error with two or more started leds
           digitalWrite(push_led_btn[rdx].led_row, !push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, push_led_btn[rdx].led_state);  
         }
@@ -260,45 +295,108 @@ static void led_swept_t(){ // swept each led button state
 }
 
 static void led_pos_handler(led_btn_t led_btn){ // this function handle the button ident depending each button pressed
-  Serial.println(led_btn.btn_name);
-  if(led_btn.btn_name == "ENG"){
-    led_btn.btn_id = ENG_PRESS;
-  }else if(led_btn.btn_name == "BLEED"){
-    led_btn.btn_id = BLEED_PRESS;
-  }else if(led_btn.btn_name == "PRESS"){
-    led_btn.btn_id = PRESS_PRESS;
-  }else if(led_btn.btn_name == "ELEC"){
-    led_btn.btn_id = ELEC_PRESS;
-  }else if(led_btn.btn_name == "HYD"){
-    led_btn.btn_id = HYD_PRESS;
-  }else if(led_btn.btn_name == "FUEL"){
-    led_btn.btn_id = FUEL_PRESS;
-  }else if(led_btn.btn_name == "APU"){
-    led_btn.btn_id = APU_PRESS;
-  }else if(led_btn.btn_name == "COND"){
-    led_btn.btn_id = COND_PRESS;
-  }else if(led_btn.btn_name == "DOOR"){
-    led_btn.btn_id = DOOR_PRESS;
-  }else if(led_btn.btn_name == "WHELL"){
-    led_btn.btn_id = WHELL_PRESS;
-  }else if(led_btn.btn_name == "F/CTL"){
-    led_btn.btn_id = F_CTL_PRESS;
-  }else if(led_btn.btn_name == "CLR_L"){
-    led_btn.btn_id = CLR_L_PRESS;
-  }else if(led_btn.btn_name == "SYS"){
-    led_btn.btn_id = SYS_PRESS;
-  }else if(led_btn.btn_name == "CLR_R"){
-    led_btn.btn_id = CLR_R_PRESS;
-  }else{
-    led_btn.btn_id = -1;
+  if (led_btn.btn_name != NULL){
+    if(strcmp(led_btn.btn_name, "ENG,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = ENG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ENG,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = ENG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "BLEED,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = BLEED_PRESS;
+    } else if(strcmp(led_btn.btn_name, "BLEED,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = BLEED_PRESS;
+    } else if(strcmp(led_btn.btn_name, "PRESS,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = PRESS_PRESS;
+    } else if(strcmp(led_btn.btn_name, "PRESS,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = PRESS_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ELEC,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = ELEC_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ELEC,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = ELEC_PRESS;
+    } else if(strcmp(led_btn.btn_name, "HYD,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = HYD_PRESS;
+    } else if(strcmp(led_btn.btn_name, "HYD,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = HYD_PRESS;
+    } else if(strcmp(led_btn.btn_name,"FUEL,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = FUEL_PRESS;
+    } else if(strcmp(led_btn.btn_name,"FUEL,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = FUEL_PRESS;
+    } else if(strcmp(led_btn.btn_name, "APU,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = APU_PRESS;
+    } else if(strcmp(led_btn.btn_name, "APU,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = APU_PRESS;
+    } else if(strcmp(led_btn.btn_name, "COND,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = COND_PRESS;
+    } else if(strcmp(led_btn.btn_name, "COND,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = COND_PRESS;
+    } else if(strcmp(led_btn.btn_name, "DOOR,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = DOOR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "DOOR,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = DOOR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WHELL,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = WHELL_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WHELL,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = WHELL_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/CTL,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = F_CTL_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/CTL,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = F_CTL_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CLR_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = CLR_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CLR_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = CLR_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "SYS,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = SYS_PRESS;
+    } else if(strcmp(led_btn.btn_name, "SYS,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = SYS_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CLR_R,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = CLR_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CLR_R,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = CLR_R_PRESS;
+    } else{
+      led_btn.btn_id = -1;
+      led_btn.btn_name = NULL;
+    }
+    toggle_led(led_btn); // call toggle_lede function to change the state depending on button pressed
+    led_btn.btn_name = NULL; // clear the button name pointer
+  } else {
+    Serial.println("error - call to button led does't work");
   }
-  toggle_led(led_btn); // call toggle function to change the state depending on button pressed
 }
 
 void toggle_btn_t(char *btn_name_id){ // main function to call the handler, assign the ident from main function of the program
   struct led_btn_t button; //  set the variable for the led structure
   button.btn_name = btn_name_id; //  set the button name to the structure
   led_pos_handler(button); // call handler function
+  btn_name_id = NULL; // clear the button id pointer
+  button.btn_name = NULL; // clear the button name pointer
 }
 
 #endif /* END KEYBOARDCOMPONENTS__H__ */

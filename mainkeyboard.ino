@@ -3,8 +3,9 @@
 void setup(){ // configuration of MCU
   // put your setup code here, to run once:
   Serial.begin(115200); // begin serial communication
-  Timer1.attachInterrupt(ISR_time);
-  Timer1.initialize(100);
+  //inputString.reserve(100);
+  //Timer1.attachInterrupt(ISR_time);
+  //Timer1.initialize(100);
   array_initialise(); // initialise the array features
   Serial.println(); 
   button_initialise(); // initialising the pins operation mode configuration
@@ -29,23 +30,29 @@ void setup(){ // configuration of MCU
   Serial.print("\n -> \n\r");
 }
 
-static void ISR_time(){ // interrupt service rutine of timer one
-  time_counter++; // increment counter in time assigned
-}
+//static void ISR_time(){ // interrupt service rutine of timer one
+//  time_counter++; // increment counter in time assigned
+//}
 
 void loop(){
   // put your main code here, to run repeatedly:
+  if (serialEvent_handler()){
+    Serial.print("serialReceive> ");
+    Serial.println(serialReceive());
+    toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
+  }
   led_swept_t(); // swept the leds states
   for (jdx = 0; jdx < size_array(COLUMNS); jdx++){ //  scan each button to determine if this was pressed
     pin_rst(); // reseting the columns
     digitalWrite(COLUMNS[jdx], LOW); // able the correct column of button array
     for (idx = 0; idx < size_array(ROWS); idx++){ 
       if (!digitalRead(ROWS[idx])){ // read each button pressed, row by row
-        toggle_btn_t(BTN[idx][jdx]); // call led button toggle function if it's available
+        //toggle_btn_t(BTN[idx][jdx]); // call led button toggle function if it's available
         led_swept_t(); // swept the leds states
         while(!digitalRead(ROWS[idx])){ ; // this function avoid issues at press button
           led_swept_t(); // swept the leds states
         }
+        Serial.println(BTN[idx][jdx]);
         Serial.flush(); // cleaning the serial port
       }
     }
