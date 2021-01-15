@@ -37,8 +37,6 @@ void setup(){ // configuration of MCU
 void loop(){
   // put your main code here, to run repeatedly:
   if (serialEvent_handler()){
-    Serial.print("serialReceive> ");
-    Serial.println(serialReceive());
     toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
   }
   led_swept_t(); // swept the leds states
