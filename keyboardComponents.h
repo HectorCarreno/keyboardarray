@@ -60,7 +60,8 @@ enum {
   F_CTL_PRESS,
   CLR_L_PRESS,
   SYS_PRESS,
-  CLR_R_PRESS
+  CLR_R_PRESS,
+  FULLY_PRESS
 }; // enumerating leds identities
 
 struct led_btn_t {// structure of one led button
@@ -292,23 +293,12 @@ static void toggle_led(led_btn_t led_t){ // Toggle led pins states
   atm_err_t err = led_t.btn_id;
   if (err == -1){
     Serial.println("ERROR - button name not able");
+  } if(err == FULLY_PRESS){
+    for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
+      push_led_btn[rdx].led_state = led_t.led_state;
+    }
   } else { // avoid error reading led state 
     push_led_btn[led_t.btn_id].led_state = led_t.led_state; // toggle state for each led button
-    //Serial.print("\n # STATE ");
-    //Serial.println(push_led_btn[led_t.btn_id].led_state);
-    if (push_led_btn[led_t.btn_id].led_state){ // set on mode for led button
-      //Serial.print("\n Activate led \n");
-      digitalWrite(push_led_btn[led_t.btn_id].led_column, !led_t.led_state);
-      digitalWrite(push_led_btn[led_t.btn_id].led_row, led_t.led_state);
-    } else if (!push_led_btn[led_t.btn_id].led_state){ // set off mode for led button
-      //Serial.print("\n deactivate led \n");
-      digitalWrite(push_led_btn[led_t.btn_id].led_column, !led_t.led_state);
-      digitalWrite(push_led_btn[led_t.btn_id].led_row, led_t.led_state);
-    }
-  } 
-  for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){ // set off mode all led button
-      digitalWrite(push_led_btn[rdx].led_row, off_mode);
-      digitalWrite(push_led_btn[rdx].led_column, on_mode);
   } 
 }
 
@@ -317,9 +307,11 @@ static void led_swept_t(){ // swept each led button state
       if (push_led_btn[rdx].led_state){ // just when the state is high, set the led button in on mode
           digitalWrite(push_led_btn[rdx].led_row, push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, !push_led_btn[rdx].led_state);
-          delayMicroseconds(350); // return to off mode for avoid error with two or more started leds
+          delayMicroseconds(200); // return to off mode for avoid error with two or more started leds
           digitalWrite(push_led_btn[rdx].led_row, !push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, push_led_btn[rdx].led_state);  
+        } else {
+          digitalWrite(push_led_btn[rdx].led_column, !push_led_btn[rdx].led_state);  
         }
     }
 }
@@ -410,6 +402,12 @@ static void led_pos_handler(led_btn_t led_btn){ // this function handle the butt
     } else if(strcmp(led_btn.btn_name, "CLR_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
       led_btn.btn_id = CLR_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FULLY,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = FULLY_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FULLY,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = FULLY_PRESS;
     } else {
       led_btn.btn_id = -1;
       led_btn.btn_name = NULL;
