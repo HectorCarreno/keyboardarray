@@ -19,6 +19,7 @@
 #include <TimerOne.h> // add timer one library
 #include <string.h> // add string library
 
+//#define BTN_ERR -1
 #define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
 #define leds_Qty 14 // quantity of leds in the board
 #define keys_Qty 18 // quantity of keys in the board
@@ -39,7 +40,6 @@ const char *BTN[size_array(ROWS)][size_array(COLUMNS)] = {"ENG", "BLEED", "PRESS
 // above definition assign rows x columns position with each button respectively 
 
 typedef int8_t atm_err_t; // define type of data to handle different needs
-typedef volatile bool FAIL_STATE; 
 
 enum {
   off_mode,
@@ -47,6 +47,7 @@ enum {
 }; // enumerating state modes
 
 enum {
+  BTN_ERR = -1,
   ENG_PRESS,
   BLEED_PRESS,
   PRESS_PRESS,
@@ -291,7 +292,7 @@ static void testing_led_array_t(){ // test all led button array
 
 static void toggle_led(led_btn_t led_t){ // Toggle led pins states
   atm_err_t err = led_t.btn_id;
-  if (err == -1){
+  if (err == BTN_ERR){
     Serial.println("ERROR - button name not able");
   } if(err == FULLY_PRESS){
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
@@ -409,7 +410,7 @@ static void led_pos_handler(led_btn_t led_btn){ // this function handle the butt
       led_btn.led_state = off_mode;
       led_btn.btn_id = FULLY_PRESS;
     } else {
-      led_btn.btn_id = -1;
+      led_btn.btn_id = BTN_ERR;
       led_btn.btn_name = NULL;
     }
     toggle_led(led_btn); // call toggle_lede function to change the state depending on button pressed
