@@ -19,25 +19,37 @@
 #include <TimerOne.h> // add timer one library
 #include <string.h> // add string library
 
-//#define BTN_ERR -1
 #define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
-#define leds_Qty 14 // quantity of leds in the board
-#define keys_Qty 18 // quantity of keys in the board
-#define str_buf 16
+#define leds_Qty 28 // quantity of leds in the board
+#define keys_Qty 20 // quantity of keys in the board
+#define str_buf 16 // buffer for serial data received
+// ***************************************************
+#define test_time 20 // time for delay in test led array
+#define test_time_l 100 // time for long delay in test led array
 
-uint8_t CATHODES[] = {41, 39, 37, 35, 33, 31}; // cathodes pins assignment
-uint8_t ANODES[] = {23, 25, 27}; // anodes pins assignment
-uint8_t COLUMNS[] = {28, 30, 32, 34, 36, 38}; // columns pins assignment
-uint8_t ROWS[] = {26, 24, 22}; // rows pins assignment
+uint8_t CATHODES[] = {31, 33, 35, 37, 41, 45, 49}; // cathodes leds pins assignment - columns
+uint8_t ANODES[] = {53, 51, 47, 43, 39}; // anodes leds pins assignment - rows
+
+uint8_t ROWS[] = {34, 36, 38, 40, 42, 44, 46}; // buttons rows pins assignment
+uint8_t COLUMNS[] = {52, 50, 48}; // button columns pins assignment
+
 uint8_t idx, jdx, tdx, rdx; // counters index
+
 long int time_counter = 0; // define time counter data type and value
 char *char_ptr = NULL;
 char char_string[str_buf] = ""; // a char array to hold incoming data
+
 volatile bool stringComplete = false;  // whether the string is complete
-const char *BTN[size_array(ROWS)][size_array(COLUMNS)] = {"ENG", "BLEED", "PRESS", "ELEC", "HYD", "FUEL",
-                                                          "APU", "COND", "DOOR", "WHELL", "F/CTL", "ALL",
-                                                        "CLR_L", "TO CONFIG", "SYS", "RCL", "EMER/CANC", "CLR_R"};
+const char *LED_BTN_NAME[size_array(ANODES)][size_array(CATHODES)] = {"LOC", "AP1", "A/THR", "AP2", "EXPED", "APPR", NULL,
+                                                                      "FD_R", "LS_R", "CSTR_R", "WPT_R", "VOR.D_R", "NDB_R", "ARPT_R",
+                                                                      "FD_L", "LS_L", "CSTR_L", "WPT_L", "VOR.D_L", "NDB_L", "ARPT_L", 
+                                                                      "F/O_RG", "F/O_RR", "MASTER_WARM_R", "MASTER_CAUT_R", NULL, NULL, NULL,
+                                                                      "F/O_LG", "F/O_LR", "MASTER_WARM_L", "MASTER_CAUT_L", NULL, NULL, NULL};
 // above definition assign rows x columns position with each button respectively 
+const char *BTN_NAME[size_array(COLUMNS)][size_array(ROWS)] = {"APPR", "EXPED", "AP2", "A/THR", "AP1", "LOC", NULL,
+                                                               "FD_L", "LS_L", "ARPT_L", "NDB_L", "VOR.D_L", "WPT_L", "CSTR_L",
+                                                               "LS_R", "FD_R", "CSTR_R", "WPT_R", "VOR.D_R", "NDB_R", "ARPT_R"};
+
 
 typedef int8_t atm_err_t; // define type of data to handle different needs
 
@@ -116,18 +128,18 @@ key_btn_t push_key_btn[keys_Qty]; //  array of structures to quantify the key bu
 static void array_initialise(){ // initialise function shows the button array configuration
   Serial.println("-> Keyboard array was configurated thus: "); 
   Serial.print("!Size of rows: "); 
-  Serial.print(size_array(ROWS));  // show rows quantity
+  Serial.print(size_array(ANODES));  // show rows quantity
   Serial.print(" Size of columns: ");
-  Serial.println(size_array(COLUMNS)); // show columns quantity
-  for(idx = 0; idx < size_array(COLUMNS);++idx){ // scan all button array
+  Serial.println(size_array(CATHODES)); // show columns quantity
+  for(idx = 0; idx < size_array(ANODES);++idx){ // scan all button array
     Serial.println();
-    for(jdx = 0; jdx < size_array(ROWS); ++jdx){
+    for(jdx = 0; jdx < size_array(CATHODES); ++jdx){
       Serial.print("# Key position: Row ");
       Serial.print(jdx);
       Serial.print(" Column ");
       Serial.print(idx);
       Serial.print(" Button: ");
-      Serial.println(BTN[jdx][idx]); // show the row and column position for button pressed and its name
+      Serial.println(LED_BTN_NAME[idx][jdx]); // show the row and column position for button pressed and its name
       delay(10);
     }    
   }
@@ -167,30 +179,45 @@ static void button_initialise(){ // configure the button pins as inputs ans outp
   Serial.println(".");
   delay(random(50, 200));
 
-  rdx = NULL;
   memset(push_key_btn[keys_Qty].key_name, NULL, keys_Qty);
-  for (idx = 0; idx < size_array(ROWS); idx++){
-    for (jdx = 0; jdx < size_array(COLUMNS); jdx++) { 
-      Serial.print("\n\n\r # key index -> ");
-      Serial.print(rdx + 1);
-      push_key_btn[rdx].key_row = ROWS[idx];
-      Serial.print(" Set row -> ");
-      Serial.print(push_key_btn[rdx].key_row);
-      push_key_btn[rdx].key_column = COLUMNS[jdx];
-      Serial.print(" Set column -> ");
-      Serial.print(push_key_btn[rdx].key_column);
-      push_key_btn[rdx].key_name = BTN[idx][jdx];
-      Serial.print(" Set name -> ");
-      Serial.println(push_key_btn[rdx].key_name);
-      rdx++;
+
+  idx = 0, jdx = 0;
+  for (rdx = 0; rdx < size_array(push_key_btn); ++rdx)
+  {
+    if (rdx == 6){
+      idx = 0;
+      jdx = 1;
+      Serial.print("\n\r #next module \n\r");
+    } else if (rdx == 13){
+      idx = 0;
+      jdx = 2;
+      Serial.print("\n\r #next module \n\r");
     }
+    Serial.print("key index -> ");
+    push_key_btn[rdx].key_row = ROWS[idx];
+    Serial.print(" Set button row -> ");
+    Serial.print(push_key_btn[rdx].key_row);
+    push_key_btn[rdx].key_column = COLUMNS[jdx];
+    Serial.print(" column -> ");
+    Serial.print(push_key_btn[rdx].key_column);
+    push_key_btn[rdx].key_name = BTN_NAME[jdx][idx];
+    Serial.print(" Set name -> ");
+    Serial.print(push_key_btn[rdx].key_name);
+    Serial.print("\n\r");
+
+    
+    idx++;
+    delay(10);
+  }
+  
+  for(idx = 0; idx < size_array(ROWS); idx++){
+    pinMode(ROWS[idx], INPUT_PULLUP);  
   }
 
-  for (rdx = 0; rdx < keys_Qty; rdx++){
-    pinMode(push_key_btn[rdx].key_row, INPUT_PULLUP);
-    pinMode(push_key_btn[rdx].key_column, OUTPUT);
-    digitalWrite(push_key_btn[tdx].key_column, on_mode); // reset the all outputs
-  }    
+  for(idx = 0; idx < size_array(COLUMNS); idx++){
+    pinMode(COLUMNS[idx], OUTPUT);
+    digitalWrite(COLUMNS[idx], on_mode); // reset the all outputs
+  }
 }
 
 static void pin_rst(){ // set all button in no press mode
@@ -223,6 +250,7 @@ static void lets_started(){
 
 
 static void led_btn_initilise(){ // initialise the led pin accord each button
+  delay(2); // pre-delay function
   memset(push_led_btn[leds_Qty].btn_name, NULL, leds_Qty);
   Serial.println("\n\r # Set leds pins as outputs...");
     idx = 0, jdx = 0;
@@ -230,18 +258,24 @@ static void led_btn_initilise(){ // initialise the led pin accord each button
     if (rdx == 6){
       idx = 1;
       jdx = 0;
-    } else if (rdx == 11){
+      Serial.println("\n\r #next module \n\r");
+    } else if (rdx == 13){
       idx = 2;
       jdx = 0;
-    } else if (rdx == 12){
-      jdx = 2;
-    } else if (rdx == 13){
-      jdx = 5;
+      Serial.println("\n\r #next module \n\r");
+    } else if (rdx == 20){
+      idx = 3;
+      jdx = 0;
+      Serial.println("\n\r #next module \n\r");
+    } else if (rdx == 24){
+      idx = 4;
+      jdx = 0;
+      Serial.println("\n\r #next module \n\r");
     }
     push_led_btn[rdx].led_row = ANODES[idx]; // assign pin anode to each row
     push_led_btn[rdx].led_column = CATHODES[jdx]; // assign pin cathode to each column
     push_led_btn[rdx].led_state = off_mode; // define state as low level
-    push_led_btn[rdx].btn_name = BTN[idx][jdx]; // assign name to each button with led
+    push_led_btn[rdx].btn_name = LED_BTN_NAME[idx][jdx]; // assign name to each button with led
     Serial.print("\n Set pin "); 
     Serial.print(push_led_btn[rdx].btn_name);
     Serial.print(" Anode pin ");
@@ -251,6 +285,9 @@ static void led_btn_initilise(){ // initialise the led pin accord each button
     pinMode(push_led_btn[rdx].led_row, OUTPUT); // define rows as outputs
     pinMode(push_led_btn[rdx].led_column, OUTPUT); // define columns as outputs
 
+    digitalWrite(push_led_btn[rdx].led_row, on_mode); // set row outputs in off mode
+    digitalWrite(push_led_btn[rdx].led_column, off_mode); // set column outputs in on mode
+    delay(10);
     digitalWrite(push_led_btn[rdx].led_row, off_mode); // set row outputs in off mode
     digitalWrite(push_led_btn[rdx].led_column, on_mode); // set column outputs in on mode
     jdx++; // increment index for each iteration accord with led button array size
@@ -259,30 +296,30 @@ static void led_btn_initilise(){ // initialise the led pin accord each button
 
 static void testing_led_array_t(){ // test all led button array
   Serial.print("\n\n Testing leds..... \r\n");
-  for (idx = 0; idx < 2; ++idx){  
+  for (idx = 0; idx < 1; ++idx){  
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
       digitalWrite(push_led_btn[rdx].led_row, on_mode);
       digitalWrite(push_led_btn[rdx].led_column, off_mode);
-      delay(30);
+      delay(test_time);
       digitalWrite(push_led_btn[rdx].led_row, off_mode);
       digitalWrite(push_led_btn[rdx].led_column, on_mode);
     }
-    delay(30);
+    delay(test_time);
     for (rdx = size_array(push_led_btn); rdx > 0*size_array(push_led_btn); --rdx){
       digitalWrite(push_led_btn[rdx].led_row, on_mode);
       digitalWrite(push_led_btn[rdx].led_column, off_mode);
-      delay(30);
+      delay(test_time);
       digitalWrite(push_led_btn[rdx].led_row, off_mode);
       digitalWrite(push_led_btn[rdx].led_column, on_mode);
     }
   }
   for (idx = 0; idx < 2; ++idx){
-    delay(250);
+    delay(test_time_l);
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
       digitalWrite(push_led_btn[rdx].led_row, on_mode);
       digitalWrite(push_led_btn[rdx].led_column, off_mode);
     }
-    delay(250);
+    delay(test_time_l);
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
         digitalWrite(push_led_btn[rdx].led_row, off_mode);
         digitalWrite(push_led_btn[rdx].led_column, on_mode);
@@ -429,21 +466,36 @@ static void toggle_btn_t(char *btn_name_id){ // main function to call the handle
 }
 
 static void keyboard_scan_t(){
-  led_swept_t(); // swept the leds states
+//  led_swept_t(); // swept the leds states
   for (jdx = 0; jdx < size_array(COLUMNS); jdx++){ //  scan each button to determine if this was pressed
     pin_rst(); // reseting the columns
     digitalWrite(COLUMNS[jdx], LOW); // able the correct column of button array
     for (idx = 0; idx < size_array(ROWS); idx++){ 
       if (!digitalRead(ROWS[idx])){ // read each button pressed, row by row
-        led_swept_t(); // swept the leds states
+        //led_swept_t(); // swept the leds states
+        Serial.println(BTN_NAME[jdx][idx]);
         while(!digitalRead(ROWS[idx])){ ; // this function avoid issues at press button
           led_swept_t(); // swept the leds states
         }
-        Serial.println(BTN[idx][jdx]);
         Serial.flush(); // cleaning the serial port
       }
     }
   }
+  /*
+  for (rdx = 0; rdx < size_array(push_key_btn); ++rdx){
+    pin_rst();
+    digitalWrite(push_key_btn[rdx].key_column, off_mode);
+    if (!digitalRead(push_key_btn[rdx].key_row));
+    {
+      led_swept_t();
+      while(!digitalRead(push_key_btn[rdx].key_row)){
+        //led_swept_t();
+      }
+      Serial.println(push_key_btn[rdx].key_name);
+      Serial.flush();
+    }
+  }
+  */
 }
 
 #endif /* END KEYBOARDCOMPONENTS__H__ */

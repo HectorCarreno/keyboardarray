@@ -20,8 +20,8 @@ static void ISR_time(){ // interrupt service rutine of timer one
 
 void loop(){
   // put your main code here, to run repeatedly:
-  if (serialEvent_handler()){
-    toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
-  }
+  //if (serialEvent_handler()){
+    //toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
+  //}
   keyboard_scan_t();
 }
