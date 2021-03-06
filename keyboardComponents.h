@@ -22,10 +22,10 @@
 #define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
 #define leds_Qty 28 // quantity of leds in the board
 #define keys_Qty 20 // quantity of keys in the board
-#define str_buf 16 // buffer for serial data received
+#define str_buf 30 // buffer for serial data received
 // ***************************************************
-#define test_time 20 // time for delay in test led array
-#define test_time_l 100 // time for long delay in test led array
+#define test_time 40 // time for delay in test led array
+#define test_time_l 150 // time for long delay in test led array
 
 uint8_t CATHODES[] = {31, 33, 35, 37, 41, 45, 49}; // cathodes leds pins assignment - columns
 uint8_t ANODES[] = {53, 51, 47, 43, 39}; // anodes leds pins assignment - rows
@@ -60,22 +60,37 @@ enum {
 
 enum {
   BTN_ERR = -1,
-  ENG_PRESS,
-  BLEED_PRESS,
-  PRESS_PRESS,
-  ELEC_PRESS, 
-  HYD_PRESS,
-  FUEL_PRESS,
-  APU_PRESS,
-  COND_PRESS,
-  DOOR_PRESS,
-  WHELL_PRESS,
-  F_CTL_PRESS,
-  CLR_L_PRESS,
-  SYS_PRESS,
-  CLR_R_PRESS,
+  LOC_PRESS,
+  AP1_PRESS,
+  A_THR_PRESS,
+  AP2_PRESS, 
+  EXPED_PRESS,
+  APPR_PRESS,
+  FD_R_PRESS,
+  LS_R_PRESS,
+  CSTR_R_PRESS,
+  WPT_R_PRESS,
+  VOR_D_R_PRESS,
+  NDB_R_PRESS,
+  ARPT_R_PRESS,
+  FD_L_PRESS,
+  LS_L_PRESS,
+  CSTR_L_PRESS,
+  WPT_L_PRESS,
+  VOR_D_L_PRESS,
+  NDB_L_PRESS,
+  ARPT_L_PRESS,
+  F_O_RG_PRESS,
+  F_O_RR_PRESS,
+  MASTER_WARM_R_PRESS,
+  MASTER_CAUT_R_PRESS,
+  F_O_LG_PRESS,
+  F_O_LR_PRESS,
+  MASTER_WARM_L_PRESS,
+  MASTER_CAUT_L_PRESS,
+  //.........
   FULLY_PRESS
-}; // enumerating leds identities
+}; // enumerating leds identities F/O_RG", "F/O_RR", "MASTER_WARM_R", "MASTER_CAUT_R"
 
 struct led_btn_t {// structure of one led button
   uint8_t led_row = NULL;  // row pin assigned
@@ -114,6 +129,11 @@ static char* serialReceive(){
   char_ptr = NULL; // clear char pointer
   char_ptr = char_string; // store string received from serial port in char pointer
   stringComplete = false; // clean flag
+  
+  Serial.print("\n\r");
+  Serial.print(char_ptr);
+  Serial.print("\n\r");
+
   return char_ptr; // return the string received in pointer assigned to function
 }
 
@@ -143,6 +163,7 @@ static void array_initialise(){ // initialise function shows the button array co
       delay(10);
     }    
   }
+  Serial.print("\n\n\r");
 }
 
 static void button_initialise(){ // configure the button pins as inputs ans outputs
@@ -179,19 +200,20 @@ static void button_initialise(){ // configure the button pins as inputs ans outp
   Serial.println(".");
   delay(random(50, 200));
 
-  memset(push_key_btn[keys_Qty].key_name, NULL, keys_Qty);
-
+  //memset(push_key_btn[keys_Qty].key_name, NULL, keys_Qty);
+  Serial.print("\n\n\r # Key button index memory assigned! \n\n\r");
+  Serial.print("\n\r Main panel configuration \n\r");
   idx = 0, jdx = 0;
   for (rdx = 0; rdx < size_array(push_key_btn); ++rdx)
   {
     if (rdx == 6){
       idx = 0;
       jdx = 1;
-      Serial.print("\n\r #next module \n\r");
+      Serial.print("\n\r Right panel configuration \n\r");
     } else if (rdx == 13){
       idx = 0;
       jdx = 2;
-      Serial.print("\n\r #next module \n\r");
+      Serial.print("\n\r Left panel configuration \n\r");
     }
     Serial.print("key index -> ");
     push_key_btn[rdx].key_row = ROWS[idx];
@@ -218,6 +240,8 @@ static void button_initialise(){ // configure the button pins as inputs ans outp
     pinMode(COLUMNS[idx], OUTPUT);
     digitalWrite(COLUMNS[idx], on_mode); // reset the all outputs
   }
+
+  Serial.print("\n\r Button configuration done! \n\r ");
 }
 
 static void pin_rst(){ // set all button in no press mode
@@ -250,27 +274,29 @@ static void lets_started(){
 
 
 static void led_btn_initilise(){ // initialise the led pin accord each button
-  delay(2); // pre-delay function
-  memset(push_led_btn[leds_Qty].btn_name, NULL, leds_Qty);
   Serial.println("\n\r # Set leds pins as outputs...");
-    idx = 0, jdx = 0;
+  delay(10); // pre-delay function
+  //memset(push_led_btn[leds_Qty].btn_name, NULL, leds_Qty);
+  Serial.println("\n\r Led's names memory allocated \n\r");
+  Serial.print("\n\n\r Main panel configuration \n\r");
+  idx = 0, jdx = 0;
   for(rdx = 0; rdx < size_array(push_led_btn); ++rdx){ // avoid assign pins to button without led
     if (rdx == 6){
       idx = 1;
       jdx = 0;
-      Serial.println("\n\r #next module \n\r");
+      Serial.print("\n\r Right panel configuration \n\r");
     } else if (rdx == 13){
       idx = 2;
       jdx = 0;
-      Serial.println("\n\r #next module \n\r");
+      Serial.print("\n\r Left panel configuration \n\r");
     } else if (rdx == 20){
       idx = 3;
       jdx = 0;
-      Serial.println("\n\r #next module \n\r");
+      Serial.print("\n\r Extrem right panel configuration \n\r");
     } else if (rdx == 24){
       idx = 4;
       jdx = 0;
-      Serial.println("\n\r #next module \n\r");
+      Serial.print("\n\r Extrem left panel configuration \n\n\r");
     }
     push_led_btn[rdx].led_row = ANODES[idx]; // assign pin anode to each row
     push_led_btn[rdx].led_column = CATHODES[jdx]; // assign pin cathode to each column
@@ -287,10 +313,13 @@ static void led_btn_initilise(){ // initialise the led pin accord each button
 
     digitalWrite(push_led_btn[rdx].led_row, on_mode); // set row outputs in off mode
     digitalWrite(push_led_btn[rdx].led_column, off_mode); // set column outputs in on mode
-    delay(10);
+    delay(30);
     digitalWrite(push_led_btn[rdx].led_row, off_mode); // set row outputs in off mode
     digitalWrite(push_led_btn[rdx].led_column, on_mode); // set column outputs in on mode
     jdx++; // increment index for each iteration accord with led button array size
+  }
+  for(rdx = 0; rdx < size_array(push_led_btn); ++rdx){
+    Serial.println(push_led_btn[rdx].btn_name);
   }
 }
 
@@ -331,9 +360,9 @@ static void toggle_led(led_btn_t led_t){ // Toggle led pins states
   atm_err_t err = led_t.btn_id;
   if (err == BTN_ERR){
     Serial.println("ERROR - button name not able");
-  } if(err == FULLY_PRESS){
+  } else if(err == FULLY_PRESS){
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
-      push_led_btn[rdx].led_state = led_t.led_state;
+      push_led_btn[rdx].led_state = led_t.led_state; // set all leds state
     }
   } else { // avoid error reading led state 
     push_led_btn[led_t.btn_id].led_state = led_t.led_state; // toggle state for each led button
@@ -356,90 +385,181 @@ static void led_swept_t(){ // swept each led button state
 
 static void led_pos_handler(led_btn_t led_btn){ // this function handle the button ident depending each button pressed
   if (led_btn.btn_name != NULL){
-    if(strcmp(led_btn.btn_name, "ENG,ON\n") == NULL){
+
+    /*
+    Serial.print("\n\r\t # ed_btn.key_name ");
+    Serial.print(led_btn.btn_name);
+    Serial.print("\n\r");
+    */
+
+    if(strcmp(led_btn.btn_name, "LOC,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = ENG_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ENG,OFF\n") == NULL){
+      led_btn.btn_id = LOC_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LOC,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = ENG_PRESS;
-    } else if(strcmp(led_btn.btn_name, "BLEED,ON\n") == NULL){
+      led_btn.btn_id = LOC_PRESS;
+    } else if(strcmp(led_btn.btn_name, "AP1,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = BLEED_PRESS;
-    } else if(strcmp(led_btn.btn_name, "BLEED,OFF\n") == NULL){
+      led_btn.btn_id = AP1_PRESS;
+    } else if(strcmp(led_btn.btn_name, "AP1,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = BLEED_PRESS;
-    } else if(strcmp(led_btn.btn_name, "PRESS,ON\n") == NULL){
+      led_btn.btn_id = AP1_PRESS;
+    } else if(strcmp(led_btn.btn_name, "A_THR,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = PRESS_PRESS;
-    } else if(strcmp(led_btn.btn_name, "PRESS,OFF\n") == NULL){
+      led_btn.btn_id = A_THR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "A_THR,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = PRESS_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ELEC,ON\n") == NULL){
+      led_btn.btn_id = A_THR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "AP2,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = ELEC_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ELEC,OFF\n") == NULL){
+      led_btn.btn_id = AP2_PRESS;
+    } else if(strcmp(led_btn.btn_name, "AP2,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = ELEC_PRESS;
-    } else if(strcmp(led_btn.btn_name, "HYD,ON\n") == NULL){
+      led_btn.btn_id = AP2_PRESS;
+    } else if(strcmp(led_btn.btn_name, "EXPED,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = HYD_PRESS;
-    } else if(strcmp(led_btn.btn_name, "HYD,OFF\n") == NULL){
+      led_btn.btn_id = EXPED_PRESS;
+    } else if(strcmp(led_btn.btn_name, "EXPED,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = HYD_PRESS;
-    } else if(strcmp(led_btn.btn_name,"FUEL,ON\n") == NULL){
+      led_btn.btn_id = EXPED_PRESS;
+    } else if(strcmp(led_btn.btn_name,"APPR,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = FUEL_PRESS;
-    } else if(strcmp(led_btn.btn_name,"FUEL,OFF\n") == NULL){
+      led_btn.btn_id = APPR_PRESS;
+    } else if(strcmp(led_btn.btn_name,"APPR,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = FUEL_PRESS;
-    } else if(strcmp(led_btn.btn_name, "APU,ON\n") == NULL){
+      led_btn.btn_id = APPR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = APU_PRESS;
-    } else if(strcmp(led_btn.btn_name, "APU,OFF\n") == NULL){
+      led_btn.btn_id = FD_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = APU_PRESS;
-    } else if(strcmp(led_btn.btn_name, "COND,ON\n") == NULL){
+      led_btn.btn_id = FD_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = COND_PRESS;
-    } else if(strcmp(led_btn.btn_name, "COND,OFF\n") == NULL){
+      led_btn.btn_id = LS_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = COND_PRESS;
-    } else if(strcmp(led_btn.btn_name, "DOOR,ON\n") == NULL){
+      led_btn.btn_id = LS_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = DOOR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "DOOR,OFF\n") == NULL){
+      led_btn.btn_id = CSTR_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = DOOR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "WHELL,ON\n") == NULL){
+      led_btn.btn_id = CSTR_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = WHELL_PRESS;
-    } else if(strcmp(led_btn.btn_name, "WHELL,OFF\n") == NULL){
+      led_btn.btn_id = WPT_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = WHELL_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/CTL,ON\n") == NULL){
+      led_btn.btn_id = WPT_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = F_CTL_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/CTL,OFF\n") == NULL){
+      led_btn.btn_id = VOR_D_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = F_CTL_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CLR_L,ON\n") == NULL){
+      led_btn.btn_id = VOR_D_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = CLR_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CLR_L,OFF\n") == NULL){
+      led_btn.btn_id = NDB_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = CLR_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "SYS,ON\n") == NULL){
+      led_btn.btn_id = NDB_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_R,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = SYS_PRESS;
-    } else if(strcmp(led_btn.btn_name, "SYS,OFF\n") == NULL){
+      led_btn.btn_id = ARPT_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_R,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = SYS_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CLR_R,ON\n") == NULL){
+      led_btn.btn_id = ARPT_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_L,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = CLR_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CLR_R,OFF\n") == NULL){
+      led_btn.btn_id = FD_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_L,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = CLR_R_PRESS;
+      led_btn.btn_id = FD_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = LS_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = LS_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = CSTR_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = CSTR_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = WPT_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = WPT_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = VOR_D_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = VOR_D_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = NDB_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = NDB_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = ARPT_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = ARPT_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_LG,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = F_O_LG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_LG,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = F_O_LG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_LR,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = F_O_LR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_LR,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = F_O_LR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = MASTER_WARM_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = MASTER_WARM_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_L,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = MASTER_CAUT_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_L,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = MASTER_CAUT_L_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_RG,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = F_O_RG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_RG,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = F_O_RG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_RR,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = F_O_RR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_RR,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = F_O_RR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_R,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = MASTER_WARM_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_R,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = MASTER_WARM_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_R,ON\n") == NULL){
+      led_btn.led_state = on_mode;
+      led_btn.btn_id = MASTER_CAUT_R_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_R,OFF\n") == NULL){
+      led_btn.led_state = off_mode;
+      led_btn.btn_id = MASTER_CAUT_R_PRESS;
     } else if(strcmp(led_btn.btn_name, "FULLY,ON\n") == NULL){
       led_btn.led_state = on_mode;
       led_btn.btn_id = FULLY_PRESS;
@@ -466,10 +586,11 @@ static void toggle_btn_t(char *btn_name_id){ // main function to call the handle
 }
 
 static void keyboard_scan_t(){
-//  led_swept_t(); // swept the leds states
+  led_swept_t(); // swept the leds states
+  
   for (jdx = 0; jdx < size_array(COLUMNS); jdx++){ //  scan each button to determine if this was pressed
     pin_rst(); // reseting the columns
-    digitalWrite(COLUMNS[jdx], LOW); // able the correct column of button array
+    digitalWrite(COLUMNS[jdx], off_mode); // able the correct column of button array
     for (idx = 0; idx < size_array(ROWS); idx++){ 
       if (!digitalRead(ROWS[idx])){ // read each button pressed, row by row
         //led_swept_t(); // swept the leds states
@@ -483,17 +604,20 @@ static void keyboard_scan_t(){
   }
   /*
   for (rdx = 0; rdx < size_array(push_key_btn); ++rdx){
-    pin_rst();
+    //pin_rst();
     digitalWrite(push_key_btn[rdx].key_column, off_mode);
     if (!digitalRead(push_key_btn[rdx].key_row));
     {
       led_swept_t();
-      while(!digitalRead(push_key_btn[rdx].key_row)){
+      Serial.print(push_key_btn[rdx].key_name);
+      Serial.print("\n\r");
+      delay(1000);
+      //while(!digitalRead(push_key_btn[rdx].key_row)){
         //led_swept_t();
-      }
-      Serial.println(push_key_btn[rdx].key_name);
+      //}
       Serial.flush();
     }
+    digitalWrite(push_key_btn[rdx].key_column, on_mode);
   }
   */
 }

@@ -7,7 +7,6 @@ void setup(){ // configuration of MCU
   Timer1.attachInterrupt(ISR_time);
   Timer1.initialize(1000);
   array_initialise(); // initialise the array features
-  Serial.println(); 
   button_initialise(); // initialising the pins operation mode configuration
   led_btn_initilise();
   testing_led_array_t();
@@ -20,8 +19,8 @@ static void ISR_time(){ // interrupt service rutine of timer one
 
 void loop(){
   // put your main code here, to run repeatedly:
-  //if (serialEvent_handler()){
-    //toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
-  //}
   keyboard_scan_t();
+    if (serialEvent_handler()){
+    toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
+  }
 }
