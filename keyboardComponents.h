@@ -22,7 +22,11 @@
 #define size_array(x) sizeof(x) / sizeof(x[0]) // define the size of array function
 #define leds_Qty 28 // quantity of leds in the board
 #define keys_Qty 20 // quantity of keys in the board
+#define enconder_Qty 6// quantity of enconders in the board
 #define str_buf 30 // buffer for serial data received
+#define filter_iter 5 // iteration for adc channel filter
+
+#define DEFAULT_STEP 1 // default encoder step amount
 // ***************************************************
 #define test_time 40 // time for delay in test led array
 #define test_time_l 150 // time for long delay in test led array
@@ -30,8 +34,15 @@
 uint8_t CATHODES[] = {31, 33, 35, 37, 41, 45, 49}; // cathodes leds pins assignment - columns
 uint8_t ANODES[] = {53, 51, 47, 43, 39}; // anodes leds pins assignment - rows
 
-uint8_t ROWS[] = {34, 36, 38, 40, 42, 44, 46}; // buttons rows pins assignment
 uint8_t COLUMNS[] = {52, 50, 48}; // button columns pins assignment
+uint8_t ROWS[] = {34, 36, 38, 40, 42, 44, 46}; // buttons rows pins assignment
+
+uint8_t ENCODER_ROWS[] = {30, 28, 26}; // clk, dt, sw
+uint8_t ENCODER_COLUMNS[] = {24, 22, 23, 25, 27, 29};
+
+uint8_t SW_PINS[] = {15, 14, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+
+uint8_t ADC_PINS[] = {A0, A1, A2, A3};
 
 uint8_t idx, jdx, tdx, rdx; // counters index
 
@@ -49,6 +60,11 @@ const char *LED_BTN_NAME[size_array(ANODES)][size_array(CATHODES)] = {"LOC", "AP
 const char *BTN_NAME[size_array(COLUMNS)][size_array(ROWS)] = {"APPR", "EXPED", "AP2", "A/THR", "AP1", "LOC", NULL,
                                                                "FD_L", "LS_L", "ARPT_L", "NDB_L", "VOR.D_L", "WPT_L", "CSTR_L",
                                                                "LS_R", "FD_R", "CSTR_R", "WPT_R", "VOR.D_R", "NDB_R", "ARPT_R"};
+
+const char *ENCODER_NAME[2][size_array(ENCODER_COLUMNS)] = {"SPD", "HDG", "ALTITUDE", "V/S", "PULL/SPD_R", "PULL/SPD_L",
+                                                            "MACH", "TRK", NULL, "FPA", NULL, NULL};
+
+const char *ADC_NAME[size_array(ADC_PINS)] = {"", "", "", ""};
 
 
 typedef int8_t atm_err_t; // define type of data to handle different needs
@@ -106,6 +122,27 @@ struct key_btn_t { // structure of one key button
   const char *key_name = NULL; // key name
 };
 
+struct encoder_pulses_t {  
+  uint8_t dt_pin = NULL;
+  uint8_t sck_pin = NULL;
+  uint8_t sw_pin = NULL;
+  uint8_t encoder_pos = NULL;
+  uint8_t encoder_step = DEFAULT_STEP;
+  const char *encoder_name = NULL;
+};
+
+struct adc_pot_t {
+  uint8_t adc_pin = NULL;
+  const char *pot_name = NULL;
+  uint16_t adc_val = NULL;
+  uint16_t adc_last_val = NULL;
+};
+
+struct sw_btn_t {
+  uint8_t sw_pin = NULL;
+  const char *sw_name = NULL;
+};
+
 volatile bool serialEvent_handler() {
   idx = 0; // index for make the swept in the serial port
   if (Serial.available() > 0) // ask if serial available have any data
@@ -145,6 +182,9 @@ static char* serialReceive(){
 led_btn_t push_led_btn[leds_Qty]; //  array of structures to quantify the button with respective leds
 key_btn_t push_key_btn[keys_Qty]; //  array of structures to quantify the key button
 
+//encoder_pulses_t encoder_btn[size_array(ENCODER_COLUMNS)]; // array of structures to characterize the encoders
+adc_pot_t adc_knobs[size_array(ADC_PINS)];
+
 static void array_initialise(){ // initialise function shows the button array configuration
   Serial.println("-> Keyboard array was configurated thus: "); 
   Serial.print("!Size of rows: "); 
@@ -164,6 +204,40 @@ static void array_initialise(){ // initialise function shows the button array co
     }    
   }
   Serial.print("\n\n\r");
+}
+
+static void encoder_initialise(){
+  Serial.print("\n\r Initialising encoder functions");
+}
+
+static void adc_initialise(){
+Serial.print("\n\r Initialising ADC \n\r"); 
+  for(idx = 0; idx < size_array(ADC_PINS); idx++){
+    adc_knobs[idx].adc_pin = ADC_PINS[idx];
+    adc_knobs[idx].adc_last_val = analogRead(adc_knobs[idx].adc_pin);
+    Serial.println(adc_knobs[idx].adc_last_val);
+  }
+Serial.print("ADC pins assignement done! \n\r"); 
+}
+
+static void adc_scan(){
+  for (idx = 0; idx < size_array(ADC_PINS); ++idx)
+  {
+    adc_knobs[idx].adc_val = NULL;
+    for (jdx = 0; jdx < filter_iter; jdx++){
+      adc_knobs[idx].adc_val += analogRead(adc_knobs[idx].adc_pin);
+      adc_knobs[idx].adc_val /= filter_iter;
+    }
+    
+    if(adc_knobs[idx].adc_val != adc_knobs[idx].adc_last_val){
+      Serial.print("\n\r ADC val ");
+      Serial.print(idx);
+      Serial.print(" is: ");
+      Serial.print(adc_knobs[idx].adc_val);
+      Serial.print("\n\r");
+      adc_knobs[idx].adc_last_val = adc_knobs[idx].adc_val;
+    }
+  }
 }
 
 static void button_initialise(){ // configure the button pins as inputs ans outputs
