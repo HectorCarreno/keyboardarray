@@ -16,6 +16,7 @@
 #ifndef __KEYBOARDCOMPONENTS_H__
 #define __KEYBOARDCOMPONENTS_H__ 
 #include <arduino.h> // add arduino library
+#include <math.h> // add math library
 #include <TimerOne.h> // add timer one library
 #include <string.h> // add string library
 
@@ -24,12 +25,12 @@
 #define keys_Qty 20 // quantity of keys in the board
 #define enconder_Qty 6// quantity of enconders in the board
 #define str_buf 30 // buffer for serial data received
-#define filter_iter 5 // iteration for adc channel filter
+#define filter_iter 10 // iteration for adc channel filter
 
 #define DEFAULT_STEP 1 // default encoder step amount
 // ***************************************************
-#define test_time 40 // time for delay in test led array
-#define test_time_l 150 // time for long delay in test led array
+#define test_time 20 // time for delay in test led array
+#define test_time_l 100 // time for long delay in test led array
 
 uint8_t CATHODES[] = {31, 33, 35, 37, 41, 45, 49}; // cathodes leds pins assignment - columns
 uint8_t ANODES[] = {53, 51, 47, 43, 39}; // anodes leds pins assignment - rows
@@ -37,12 +38,22 @@ uint8_t ANODES[] = {53, 51, 47, 43, 39}; // anodes leds pins assignment - rows
 uint8_t COLUMNS[] = {52, 50, 48}; // button columns pins assignment
 uint8_t ROWS[] = {34, 36, 38, 40, 42, 44, 46}; // buttons rows pins assignment
 
-uint8_t ENCODER_ROWS[] = {30, 28, 26}; // clk, dt, sw
 uint8_t ENCODER_COLUMNS[] = {24, 22, 23, 25, 27, 29};
+uint8_t ENCODER_ROWS[] = {30, 28, 26}; // clk, dt, sw
 
-uint8_t SW_PINS[] = {15, 14, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+uint8_t SW_PINS[] = {4, 6, 15, 2, 10, 8, 13, 12, 14, 3, 5, 7, 9, 11}; 
+// 6 & 4 -> EFIS SW 1 PILOT
+// 2 & 15 -> EFIS SW 2 PILOT
+// 13 & 12 -> EFIS SW 1 COPILOT
+// 10 & 8 -> EFIS SW 1 COPILOT
+// 14 -> FO PILOT
+// 3 -> MASTER WARM PILOT
+// 5 -> MASTER CAUT PILOT
+// 5 -> FO COPILOT
+// 5 -> MASTER WARM COPILOT
+// 5 -> MASTER CAUT COPILOT
 
-uint8_t ADC_PINS[] = {A0, A1, A2, A3};
+uint8_t ADC_PINS[] = {A1, A0, A2, A3};
 
 uint8_t idx, jdx, tdx, rdx; // counters index
 
@@ -51,21 +62,24 @@ char *char_ptr = NULL;
 char char_string[str_buf] = ""; // a char array to hold incoming data
 
 volatile bool stringComplete = false;  // whether the string is complete
+
 const char *LED_BTN_NAME[size_array(ANODES)][size_array(CATHODES)] = {"LOC", "AP1", "A/THR", "AP2", "EXPED", "APPR", NULL,
-                                                                      "FD_R", "LS_R", "CSTR_R", "WPT_R", "VOR.D_R", "NDB_R", "ARPT_R",
-                                                                      "FD_L", "LS_L", "CSTR_L", "WPT_L", "VOR.D_L", "NDB_L", "ARPT_L", 
-                                                                      "F/O_RG", "F/O_RR", "MASTER_WARM_R", "MASTER_CAUT_R", NULL, NULL, NULL,
-                                                                      "F/O_LG", "F/O_LR", "MASTER_WARM_L", "MASTER_CAUT_L", NULL, NULL, NULL};
-// above definition assign rows x columns position with each button respectively 
+                                                                      "FD_C", "LS_C", "CSTR_C", "WPT_C", "VOR.D_C", "NDB_C", "ARPT_C",
+                                                                      "FD_P", "LS_P", "CSTR_P", "WPT_P", "VOR.D_P", "NDB_P", "ARPT_P", 
+                                                                      "F/O_CG", "F/O_CR", "MASTER_WARM_C", "MASTER_CAUT_C", NULL, NULL, NULL,
+                                                                      "F/O_PG", "F/O_PR", "MASTER_WARM_P", "MASTER_CAUT_P", NULL, NULL, NULL};
+
 const char *BTN_NAME[size_array(COLUMNS)][size_array(ROWS)] = {"APPR", "EXPED", "AP2", "A/THR", "AP1", "LOC", NULL,
-                                                               "FD_L", "LS_L", "ARPT_L", "NDB_L", "VOR.D_L", "WPT_L", "CSTR_L",
-                                                               "LS_R", "FD_R", "CSTR_R", "WPT_R", "VOR.D_R", "NDB_R", "ARPT_R"};
+                                                               "FD_P", "LS_P", "ARPT_P", "NDB_P", "VOR.D_P", "WPT_P", "CSTR_P",
+                                                               "LS_C", "FD_C", "CSTR_C", "WPT_C", "VOR.D_C", "NDB_C", "ARPT_C"};
 
-const char *ENCODER_NAME[2][size_array(ENCODER_COLUMNS)] = {"SPD", "HDG", "ALTITUDE", "V/S", "PULL/SPD_R", "PULL/SPD_L",
-                                                            "MACH", "TRK", NULL, "FPA", NULL, NULL};
+const char *ENCODER_NAME[size_array(ENCODER_COLUMNS)] = {"SPD", "HDG", "ALT", "V/S", "EFIS_ALT_C", "EFIS_ALT_P"};
 
-const char *ADC_NAME[size_array(ADC_PINS)] = {"", "", "", ""};
+const char *ADC_NAME[size_array(ADC_PINS)] = {"EFIS_MOD_P", "EFIS_RANGE_P", "EFIS_RANGE_C", "EFIS_MOD_C"};
+const char *ADC_POS[5] = {"LS", "VOR", "NAV", "ARC", "PLAN"};
 
+const char *SW_NAME[10] = {"EFIS_SW1_P", "EFIS_SW2_P", "EFIS_SW1_C", "EFIS_SW2_C", "SSP_F/O_P",
+                           "MST_WARM_P", "MST_CAUT_P", "SSP_F/O_C", "MST_WARM_C", "MST_CAUT_C"};
 
 typedef int8_t atm_err_t; // define type of data to handle different needs
 
@@ -75,6 +89,21 @@ enum {
 }; // enumerating state modes
 
 enum {
+  LS,
+  VOR,
+  NAV,
+  ARC,
+  PLAN
+};
+
+enum {
+  OFF_AKC,
+  ADF_AKC,
+  VOR_AKC,
+  HOLD_AKC
+};
+
+enum {
   BTN_ERR = -1,
   LOC_PRESS,
   AP1_PRESS,
@@ -82,28 +111,28 @@ enum {
   AP2_PRESS, 
   EXPED_PRESS,
   APPR_PRESS,
-  FD_R_PRESS,
-  LS_R_PRESS,
-  CSTR_R_PRESS,
-  WPT_R_PRESS,
-  VOR_D_R_PRESS,
-  NDB_R_PRESS,
-  ARPT_R_PRESS,
-  FD_L_PRESS,
-  LS_L_PRESS,
-  CSTR_L_PRESS,
-  WPT_L_PRESS,
-  VOR_D_L_PRESS,
-  NDB_L_PRESS,
-  ARPT_L_PRESS,
-  F_O_RG_PRESS,
-  F_O_RR_PRESS,
-  MASTER_WARM_R_PRESS,
-  MASTER_CAUT_R_PRESS,
-  F_O_LG_PRESS,
-  F_O_LR_PRESS,
-  MASTER_WARM_L_PRESS,
-  MASTER_CAUT_L_PRESS,
+  FD_C_PRESS,
+  LS_C_PRESS,
+  CSTR_C_PRESS,
+  WPT_C_PRESS,
+  VOR_D_C_PRESS,
+  NDB_C_PRESS,
+  ARPT_C_PRESS,
+  FD_P_PRESS,
+  LS_P_PRESS,
+  CSTR_P_PRESS,
+  WPT_P_PRESS,
+  VOR_D_P_PRESS,
+  NDB_P_PRESS,
+  ARPT_P_PRESS,
+  F_O_CG_PRESS,
+  F_O_CR_PRESS,
+  MASTER_WARM_C_PRESS,
+  MASTER_CAUT_C_PRESS,
+  F_O_PG_PRESS,
+  F_O_PR_PRESS,
+  MASTER_WARM_P_PRESS,
+  MASTER_CAUT_P_PRESS,
   //.........
   FULLY_PRESS
 }; // enumerating leds identities F/O_RG", "F/O_RR", "MASTER_WARM_R", "MASTER_CAUT_R"
@@ -123,25 +152,77 @@ struct key_btn_t { // structure of one key button
 };
 
 struct encoder_pulses_t {  
-  uint8_t dt_pin = NULL;
-  uint8_t sck_pin = NULL;
-  uint8_t sw_pin = NULL;
-  uint8_t encoder_pos = NULL;
-  uint8_t encoder_step = DEFAULT_STEP;
-  const char *encoder_name = NULL;
+  uint8_t column = NULL;
+  uint8_t rows[size_array(COLUMNS)];
+  uint8_t step = DEFAULT_STEP;
+  const char *name = NULL;
 };
 
 struct adc_pot_t {
   uint8_t adc_pin = NULL;
-  const char *pot_name = NULL;
   uint16_t adc_val = NULL;
-  uint16_t adc_last_val = NULL;
+  uint16_t last_adc_val = NULL;
+  uint8_t pot_state = NULL;
+  uint8_t last_pot_state = NULL;
+  const char *pot_name = NULL;
+  const char *pos_select = NULL;
 };
 
 struct sw_btn_t {
-  uint8_t sw_pin = NULL;
+  uint8_t sw_pin[2];
+  uint8_t sw_state = NULL;
+  uint8_t last_sw_state = NULL;
   const char *sw_name = NULL;
+  
 };
+
+static void lets_started(){
+  Serial.print("\n\n Starting MainKeyboard") ; // it works for beautify the code, there are so much of this on whole code
+  for (idx = 0; idx < random(2, 6); idx++){
+    Serial.print(".");
+    delay(20);
+  }
+  Serial.print("Done!");
+  Serial.println(".");
+  delay(20);
+  Serial.print("\n\n Ready for press button!");
+  for (idx = 0; idx < random(2, 6); idx++){
+    Serial.print(".");
+    delay(20);
+  }
+  for (idx = 0; idx < 2; idx++){
+    Serial.println();
+  }
+  Serial.print("\n -> \n\n\n\r");
+}
+
+static void arrays_initialise(){ // initialise function shows the button array configuration
+ for (idx = 0; idx < 14; idx++){
+    Serial.print("#");
+    delay(10);
+  }
+  Serial.print(" MAINKEYBOARD ");
+  for (idx = 0; idx < 9; idx++){
+    Serial.print("#");
+    delay(10);
+  }
+  Serial.println("#");
+  for (idx = 0; idx < 8; idx++){
+    Serial.print("#");
+    delay(10);
+  }
+  Serial.print(" MCDU AEROSOFT A320 SIMULATOR ");
+  for (idx = 0; idx < 8; idx++){
+    Serial.print("#");
+    delay(10);
+  }
+  Serial.println("#");
+  delay(random(10, 100));
+  for (idx = 0; idx < 4; idx++){
+    Serial.println("");
+  }
+  delay(10);
+}
 
 volatile bool serialEvent_handler() {
   idx = 0; // index for make the swept in the serial port
@@ -166,130 +247,243 @@ static char* serialReceive(){
   char_ptr = NULL; // clear char pointer
   char_ptr = char_string; // store string received from serial port in char pointer
   stringComplete = false; // clean flag
-  
+  /*
   Serial.print("\n\r");
   Serial.print(char_ptr);
   Serial.print("\n\r");
-
+  */
   return char_ptr; // return the string received in pointer assigned to function
 }
 
-// Leds pins assignment with the array conections
-//led_btn_t push_led_btn[14] = {{0,0,0,BTN[0][0]}, {0,1,0,BTN[0][1]}, {0,2,0,BTN[0][2]}, {0,3,0,BTN[0][3]}, {0,4,0,BTN[0][4]}, {0,5,0,BTN[0][5]},
-//                              {1,0,0,BTN[1][0]}, {1,1,0,BTN[1][1]}, {1,2,0,BTN[1][2]}, {1,3,0,BTN[1][3]}, {1,4,0,BTN[1][4]}, 
-//                              {2,0,0,BTN[2][0]},                    {2,2,0,BTN[2][2]},                                       {2,5,0,BTN[2][5]}};
+sw_btn_t sw_button[size_array(SW_NAME)];
 
-led_btn_t push_led_btn[leds_Qty]; //  array of structures to quantify the button with respective leds
-key_btn_t push_key_btn[keys_Qty]; //  array of structures to quantify the key button
-
-//encoder_pulses_t encoder_btn[size_array(ENCODER_COLUMNS)]; // array of structures to characterize the encoders
-adc_pot_t adc_knobs[size_array(ADC_PINS)];
-
-static void array_initialise(){ // initialise function shows the button array configuration
-  Serial.println("-> Keyboard array was configurated thus: "); 
-  Serial.print("!Size of rows: "); 
-  Serial.print(size_array(ANODES));  // show rows quantity
-  Serial.print(" Size of columns: ");
-  Serial.println(size_array(CATHODES)); // show columns quantity
-  for(idx = 0; idx < size_array(ANODES);++idx){ // scan all button array
-    Serial.println();
-    for(jdx = 0; jdx < size_array(CATHODES); ++jdx){
-      Serial.print("# Key position: Row ");
-      Serial.print(jdx);
-      Serial.print(" Column ");
-      Serial.print(idx);
-      Serial.print(" Button: ");
-      Serial.println(LED_BTN_NAME[idx][jdx]); // show the row and column position for button pressed and its name
-      delay(10);
-    }    
+static void switch_initialise() {
+  jdx = NULL; idx = NULL;
+  Serial.print("\n\n\rInitialise switch button pins assignment!.");
+  for(rdx = 0; rdx < size_array(SW_NAME); ++rdx) {
+    if(rdx < 4) {
+      for(jdx = 0; jdx < size_array(sw_button[0].sw_pin); ++jdx){
+        sw_button[rdx].sw_pin[jdx] = SW_PINS[idx];
+        pinMode(sw_button[rdx].sw_pin[jdx], INPUT_PULLUP);
+        /*
+        Serial.print("Switch pin: ");
+        Serial.print(sw_button[rdx].sw_pin[jdx]);
+        Serial.print("\t");
+        */
+        ++idx;
+      }
+    } else {
+        sw_button[rdx].sw_pin[0] = SW_PINS[idx];
+        pinMode(sw_button[rdx].sw_pin[0], INPUT_PULLUP);
+        /*Serial.print("Switch pin: ");
+        Serial.print(sw_button[rdx].sw_pin[0]);
+        Serial.print("\t");
+        */
+        ++idx;
+    }
+    sw_button[rdx].sw_name = SW_NAME[rdx];
+    sw_button[rdx].sw_state = OFF_AKC;
+    /*
+    Serial.print("Switch name: ");
+    Serial.print(sw_button[rdx].sw_name);
+    Serial.print("\n\r");
+    */
+    Serial.print(".");
+    delay(random(10,100));
   }
-  Serial.print("\n\n\r");
+  Serial.print("\n\n\rSwitch button config done!!!\n\n\n\r");
 }
+
+static void switch_handle(sw_btn_t sw_status) {
+  switch(sw_status.sw_state){
+    case ADF_AKC:
+        Serial.print(sw_status.sw_name);
+        Serial.print("\tADF_AKC\n\r");
+    break;
+    
+    case VOR_AKC:
+        Serial.print(sw_status.sw_name);
+        Serial.print("\tVOR_AKC\n\r");
+    break;
+    
+    case OFF_AKC:
+        Serial.print(sw_status.sw_name);
+        Serial.print("\tOFF_AKC\n\r");
+    break;
+
+    case HOLD_AKC:
+        Serial.print(sw_status.sw_name);
+        Serial.print("\tHOLD_AKC\n\r");        
+    break;
+    
+    default:
+    
+    break;
+  }
+}
+
+static void switch_scan() {
+  for (idx = 0; idx < size_array(SW_NAME); ++idx){
+    if (idx < 4) {
+      if (!digitalRead(sw_button[idx].sw_pin[0])){
+        sw_button[idx].sw_state = ADF_AKC;
+      } else if (!digitalRead(sw_button[idx].sw_pin[1])){
+        sw_button[idx].sw_state = VOR_AKC;
+      } else {
+        sw_button[idx].sw_state = OFF_AKC;
+      }
+    } else {
+      if (!digitalRead(sw_button[idx].sw_pin[0])){
+        sw_button[idx].sw_state = HOLD_AKC;
+      } else {
+        sw_button[idx].sw_state = OFF_AKC;
+      }
+    }
+    if (sw_button[idx].last_sw_state != sw_button[idx].sw_state)
+    {
+      sw_button[idx].last_sw_state = sw_button[idx].sw_state;
+      switch_handle(sw_button[idx]);
+    }
+  }
+}
+
+encoder_pulses_t encoder_btn[size_array(ENCODER_COLUMNS)]; // array of structures to characterize the encoders
 
 static void encoder_initialise(){
-  Serial.print("\n\r Initialising encoder functions");
+  Serial.print("\n\n\r Initialising encoder configuration!");
+  for (idx = 0; idx < size_array(ENCODER_COLUMNS); ++idx){
+    encoder_btn[idx].column = ENCODER_COLUMNS[idx];
+    encoder_btn[idx].name = ENCODER_NAME[idx];
+    for (jdx = 0; jdx < size_array(ENCODER_ROWS); ++jdx) {
+      encoder_btn[idx].rows[jdx] = ENCODER_ROWS[jdx]; // clk, dt, sw
+      delay(5);
+    }
+    pinMode(encoder_btn[idx].column, OUTPUT);
+    digitalWrite(encoder_btn[idx].column , on_mode);
+    Serial.print(".");
+    delay(5);
+  }
+  for (idx = 0; idx < size_array(ENCODER_ROWS); ++idx){
+    pinMode(encoder_btn[0].rows, INPUT);
+    delay(5);
+  }
+  Serial.print("\n\n\r Encoder confituration done!\n\n\n\r");
 }
 
-static void adc_initialise(){
-Serial.print("\n\r Initialising ADC \n\r"); 
+static void encoder_columns_rst(){ // set all button in no press mode
+  for (tdx = 0; tdx < size_array(ENCODER_COLUMNS); tdx++){ // sweep the six different columns in the button array.
+    digitalWrite(encoder_btn[tdx].column, on_mode); // reset the all outputs
+  }
+}
+
+static void encoder_scan() {
+  for (idx = 0; idx < size_array (ENCODER_COLUMNS); ++idx){
+    encoder_columns_rst();
+    digitalWrite(encoder_btn[idx].column, off_mode);
+    if(!digitalRead(encoder_btn[idx].rows[0]) < !digitalRead(encoder_btn[idx].rows[1])){
+      // do somenthing
+      Serial.print(encoder_btn[idx].name);
+      Serial.print(",INC\n\r");
+      delay(250);
+    } else if(!digitalRead(encoder_btn[idx].rows[0]) > !digitalRead(encoder_btn[idx].rows[1])){
+      // do somenthing
+      Serial.print(encoder_btn[idx].name);
+      Serial.print(",DEC\n\r");
+      delay(250);
+    } else if(!digitalRead(encoder_btn[idx].rows[2])){
+      // do somenthing
+      Serial.print(encoder_btn[idx].name);
+      Serial.print(",ENTER\n\r");
+      while(!digitalRead(encoder_btn[idx].rows[2])){};
+    }
+  }
+}
+
+adc_pot_t adc_knobs[size_array(ADC_PINS)]; // array of structures to characterize the analogic inputs
+
+static void adc_initialise() {
+  Serial.print("\n\r\n\r # Initialising ADC knobs"); 
   for(idx = 0; idx < size_array(ADC_PINS); idx++){
     adc_knobs[idx].adc_pin = ADC_PINS[idx];
-    adc_knobs[idx].adc_last_val = analogRead(adc_knobs[idx].adc_pin);
-    Serial.println(adc_knobs[idx].adc_last_val);
-  }
-Serial.print("ADC pins assignement done! \n\r"); 
-}
+    adc_knobs[idx].pot_name = ADC_NAME[idx];
 
-static void adc_scan(){
-  for (idx = 0; idx < size_array(ADC_PINS); ++idx)
-  {
-    adc_knobs[idx].adc_val = NULL;
     for (jdx = 0; jdx < filter_iter; jdx++){
       adc_knobs[idx].adc_val += analogRead(adc_knobs[idx].adc_pin);
       adc_knobs[idx].adc_val /= filter_iter;
     }
-    
-    if(adc_knobs[idx].adc_val != adc_knobs[idx].adc_last_val){
-      Serial.print("\n\r ADC val ");
-      Serial.print(idx);
-      Serial.print(" is: ");
-      Serial.print(adc_knobs[idx].adc_val);
-      Serial.print("\n\r");
-      adc_knobs[idx].adc_last_val = adc_knobs[idx].adc_val;
+
+    Serial.print("."); 
+    adc_knobs[idx].last_adc_val = (map(adc_knobs[idx].adc_val, 0, 113, 10, 320));
+    delay(random(10,100));
+  }
+  Serial.print("\n\r # ADC pins assignement done! \n\n\n\r"); 
+}
+
+static void adc_scan() {
+  for (idx = 0; idx < size_array(ADC_PINS); ++idx)
+  {
+    for (jdx = 0; jdx < filter_iter; jdx++){
+      adc_knobs[idx].adc_val += analogRead(adc_knobs[idx].adc_pin);
+      adc_knobs[idx].adc_val /= filter_iter;
+    }
+
+    if((strcmp(adc_knobs[idx].pot_name, "EFIS_MOD_P") == NULL) || (strcmp(adc_knobs[idx].pot_name, "EFIS_MOD_C") == NULL)){
+      adc_knobs[idx].pot_state = NULL;
+      if(adc_knobs[idx].adc_val >= 0 && adc_knobs[idx].adc_val < 10){
+        adc_knobs[idx].pot_state = LS;
+        adc_knobs[idx].pos_select = ADC_POS[0];
+      } else if(adc_knobs[idx].adc_val >= 10 && adc_knobs[idx].adc_val < 30){
+        adc_knobs[idx].pot_state = VOR;
+        adc_knobs[idx].pos_select = ADC_POS[1];
+      } else if(adc_knobs[idx].adc_val >= 30 && adc_knobs[idx].adc_val < 50){
+        adc_knobs[idx].pot_state = NAV;
+        adc_knobs[idx].pos_select = ADC_POS[2];
+      } else if(adc_knobs[idx].adc_val >= 50 && adc_knobs[idx].adc_val < 70){
+        adc_knobs[idx].pot_state = ARC;
+        adc_knobs[idx].pos_select = ADC_POS[3];
+      } else if(adc_knobs[idx].adc_val >= 70){
+        adc_knobs[idx].pot_state = PLAN;
+        adc_knobs[idx].pos_select = ADC_POS[4];
+      }
+      if (adc_knobs[idx].last_pot_state != adc_knobs[idx].pot_state){
+        Serial.print(adc_knobs[idx].pot_name);
+        Serial.print("\t");
+        Serial.print(adc_knobs[idx].pos_select);
+        Serial.print("\n\r");
+        adc_knobs[idx].last_pot_state = adc_knobs[idx].pot_state;
+      }    
+    } else {
+      adc_knobs[idx].adc_val = (map(adc_knobs[idx].adc_val, 0, 113, 10, 320));
+      if( adc_knobs[idx].last_adc_val != adc_knobs[idx].adc_val){
+        Serial.print(adc_knobs[idx].pot_name);
+        Serial.print("\t");
+        Serial.print(adc_knobs[idx].adc_val);
+        Serial.print("\n\r");
+        adc_knobs[idx].last_adc_val = adc_knobs[idx].adc_val;
+      }
     }
   }
 }
 
-static void button_initialise(){ // configure the button pins as inputs ans outputs
-  for (idx = 0; idx < 14; idx++){
-    Serial.print("#");
-    delay(10);
-  }
-  Serial.print(" MAINKEYBOARD ");
-  for (idx = 0; idx < 9; idx++){
-    Serial.print("#");
-    delay(10);
-  }
-  Serial.println("#");
-  for (idx = 0; idx < 8; idx++){
-    Serial.print("#");
-    delay(10);
-  }
-  Serial.print(" MCDU AEROSOFT A320 SIMULATOR ");
-  for (idx = 0; idx < 8; idx++){
-    Serial.print("#");
-    delay(10);
-  }
-  Serial.println("#");
-  delay(random(50, 200));
-  for (idx = 0; idx < 4; idx++){
-    Serial.println("");
-  }
-  delay(10);
-  Serial.print("# Configuring the push button inputs");
-  for (idx = 0; idx < 10; idx++){
-    Serial.print(".");
-    delay(10);
-  }
-  Serial.println(".");
-  delay(random(50, 200));
+key_btn_t push_key_btn[keys_Qty]; //  array of structures to quantify the key button
 
+static void button_initialise(){ // configure the button pins as inputs ans outputs
+ 
+  Serial.print("# Configuring the push button inputs!");
   //memset(push_key_btn[keys_Qty].key_name, NULL, keys_Qty);
-  Serial.print("\n\n\r # Key button index memory assigned! \n\n\r");
-  Serial.print("\n\r Main panel configuration \n\r");
+  //Serial.print("\n\n\r # Key button index memory assigned! \n\n\r");
   idx = 0, jdx = 0;
-  for (rdx = 0; rdx < size_array(push_key_btn); ++rdx)
-  {
+  for (rdx = 0; rdx < size_array(push_key_btn); ++rdx) {
     if (rdx == 6){
       idx = 0;
       jdx = 1;
-      Serial.print("\n\r Right panel configuration \n\r");
+      //Serial.print("\n\r Right panel configuration \n\r");
     } else if (rdx == 13){
       idx = 0;
       jdx = 2;
-      Serial.print("\n\r Left panel configuration \n\r");
+      //Serial.print("\n\r Left panel configuration \n\r");
     }
-    Serial.print("key index -> ");
+    /*Serial.print("key index -> ");
     push_key_btn[rdx].key_row = ROWS[idx];
     Serial.print(" Set button row -> ");
     Serial.print(push_key_btn[rdx].key_row);
@@ -299,11 +493,10 @@ static void button_initialise(){ // configure the button pins as inputs ans outp
     push_key_btn[rdx].key_name = BTN_NAME[jdx][idx];
     Serial.print(" Set name -> ");
     Serial.print(push_key_btn[rdx].key_name);
-    Serial.print("\n\r");
-
-    
+    Serial.print("\n\r");*/
     idx++;
-    delay(10);
+    Serial.print(".");
+    delay(random(10, 50));
   }
   
   for(idx = 0; idx < size_array(ROWS); idx++){
@@ -315,86 +508,65 @@ static void button_initialise(){ // configure the button pins as inputs ans outp
     digitalWrite(COLUMNS[idx], on_mode); // reset the all outputs
   }
 
-  Serial.print("\n\r Button configuration done! \n\r ");
+  Serial.print("\n\n\r Push button configuration done! \n\n\n\r ");
 }
 
 static void pin_rst(){ // set all button in no press mode
   for (tdx = 0; tdx < size_array(COLUMNS); tdx++){ // sweep the six different columns in the button array.
-    //digitalWrite(push_key_btn[tdx].key_column, on_mode); // reset the all outputs
     digitalWrite(COLUMNS[tdx], on_mode); // reset the all outputs
   }
 }
 
-static void lets_started(){
-  Serial.print("\n\n Starting MainKeyboard") ; // it works for beautify the code, there are so much of this on whole code
-  for (idx = 0; idx < random(2, 6); idx++){
-    Serial.print(".");
-    delay(20);
-  }
-  Serial.print("Done!");
-  Serial.println(".");
-  delay(20);
-  Serial.print("\n\n Ready for press button!");
-  for (idx = 0; idx < random(2, 6); idx++){
-    Serial.print(".");
-    delay(20);
-  }
-  for (idx = 0; idx < 2; idx++){
-    Serial.println();
-  }
-  Serial.print("\n -> \n\r");
-}
-
-
+led_btn_t push_led_btn[leds_Qty]; //  array of structures to quantify the button with respective leds
 
 static void led_btn_initilise(){ // initialise the led pin accord each button
-  Serial.println("\n\r # Set leds pins as outputs...");
-  delay(10); // pre-delay function
+  Serial.println("\n\r # Keyboard led array initialising...");
+  //delay(2); // pre-delay function
   //memset(push_led_btn[leds_Qty].btn_name, NULL, leds_Qty);
-  Serial.println("\n\r Led's names memory allocated \n\r");
-  Serial.print("\n\n\r Main panel configuration \n\r");
+  //Serial.println("\n\r Led's names memory allocated \n\r");
+  //Serial.print("\n\n\r Main panel configuration \n\r");
   idx = 0, jdx = 0;
   for(rdx = 0; rdx < size_array(push_led_btn); ++rdx){ // avoid assign pins to button without led
     if (rdx == 6){
       idx = 1;
       jdx = 0;
-      Serial.print("\n\r Right panel configuration \n\r");
+      //Serial.print("\n\r Right panel configuration \n\r");
     } else if (rdx == 13){
       idx = 2;
       jdx = 0;
-      Serial.print("\n\r Left panel configuration \n\r");
+      //Serial.print("\n\r Left panel configuration \n\r");
     } else if (rdx == 20){
       idx = 3;
       jdx = 0;
-      Serial.print("\n\r Extrem right panel configuration \n\r");
+      //Serial.print("\n\r Extrem right panel configuration \n\r");
     } else if (rdx == 24){
       idx = 4;
       jdx = 0;
-      Serial.print("\n\r Extrem left panel configuration \n\n\r");
+      //Serial.print("\n\r Extrem left panel configuration \n\n\r");
     }
     push_led_btn[rdx].led_row = ANODES[idx]; // assign pin anode to each row
     push_led_btn[rdx].led_column = CATHODES[jdx]; // assign pin cathode to each column
     push_led_btn[rdx].led_state = off_mode; // define state as low level
     push_led_btn[rdx].btn_name = LED_BTN_NAME[idx][jdx]; // assign name to each button with led
-    Serial.print("\n Set pin "); 
-    Serial.print(push_led_btn[rdx].btn_name);
-    Serial.print(" Anode pin ");
-    Serial.print(push_led_btn[rdx].led_row);
-    Serial.print(" Cathode pin ");
-    Serial.println(push_led_btn[rdx].led_column);
+    //Serial.print("\n Set pin "); 
+    //Serial.print(push_led_btn[rdx].btn_name);
+    //Serial.print(" Anode pin ");
+    //Serial.print(push_led_btn[rdx].led_row);
+    //Serial.print(" Cathode pin ");
+    //Serial.println(push_led_btn[rdx].led_column);
     pinMode(push_led_btn[rdx].led_row, OUTPUT); // define rows as outputs
     pinMode(push_led_btn[rdx].led_column, OUTPUT); // define columns as outputs
 
     digitalWrite(push_led_btn[rdx].led_row, on_mode); // set row outputs in off mode
     digitalWrite(push_led_btn[rdx].led_column, off_mode); // set column outputs in on mode
-    delay(30);
+    delay(20);
     digitalWrite(push_led_btn[rdx].led_row, off_mode); // set row outputs in off mode
     digitalWrite(push_led_btn[rdx].led_column, on_mode); // set column outputs in on mode
     jdx++; // increment index for each iteration accord with led button array size
   }
-  for(rdx = 0; rdx < size_array(push_led_btn); ++rdx){
+  /*for(rdx = 0; rdx < size_array(push_led_btn); ++rdx){
     Serial.println(push_led_btn[rdx].btn_name);
-  }
+  }*/
 }
 
 static void testing_led_array_t(){ // test all led button array
@@ -448,7 +620,7 @@ static void led_swept_t(){ // swept each led button state
       if (push_led_btn[rdx].led_state){ // just when the state is high, set the led button in on mode
           digitalWrite(push_led_btn[rdx].led_row, push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, !push_led_btn[rdx].led_state);
-          delayMicroseconds(200); // return to off mode for avoid error with two or more started leds
+          delayMicroseconds(500); // return to off mode for avoid error with two or more started leds
           digitalWrite(push_led_btn[rdx].led_row, !push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, push_led_btn[rdx].led_state);  
         } else {
@@ -502,138 +674,138 @@ static void led_pos_handler(led_btn_t led_btn){ // this function handle the butt
     } else if(strcmp(led_btn.btn_name,"APPR,OFF\n") == NULL){
       led_btn.led_state = off_mode;
       led_btn.btn_id = APPR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "FD_R,ON\n") == NULL){
+    } else if(strcmp(led_btn.btn_name, "FD_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = FD_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "FD_R,OFF\n") == NULL){
+      led_btn.btn_id = FD_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = FD_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "LS_R,ON\n") == NULL){
+      led_btn.btn_id = FD_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = LS_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "LS_R,OFF\n") == NULL){
+      led_btn.btn_id = LS_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = LS_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CSTR_R,ON\n") == NULL){
+      led_btn.btn_id = LS_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = CSTR_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CSTR_R,OFF\n") == NULL){
+      led_btn.btn_id = CSTR_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = CSTR_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "WPT_R,ON\n") == NULL){
+      led_btn.btn_id = CSTR_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = WPT_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "WPT_R,OFF\n") == NULL){
+      led_btn.btn_id = WPT_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = WPT_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "VOR.D_R,ON\n") == NULL){
+      led_btn.btn_id = WPT_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = VOR_D_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "VOR.D_R,OFF\n") == NULL){
+      led_btn.btn_id = VOR_D_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = VOR_D_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "NDB_R,ON\n") == NULL){
+      led_btn.btn_id = VOR_D_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = NDB_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "NDB_R,OFF\n") == NULL){
+      led_btn.btn_id = NDB_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = NDB_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ARPT_R,ON\n") == NULL){
+      led_btn.btn_id = NDB_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = ARPT_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ARPT_R,OFF\n") == NULL){
+      led_btn.btn_id = ARPT_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = ARPT_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "FD_L,ON\n") == NULL){
+      led_btn.btn_id = ARPT_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = FD_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "FD_L,OFF\n") == NULL){
+      led_btn.btn_id = FD_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "FD_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = FD_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "LS_L,ON\n") == NULL){
+      led_btn.btn_id = FD_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = LS_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "LS_L,OFF\n") == NULL){
+      led_btn.btn_id = LS_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "LS_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = LS_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CSTR_L,ON\n") == NULL){
+      led_btn.btn_id = LS_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = CSTR_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "CSTR_L,OFF\n") == NULL){
+      led_btn.btn_id = CSTR_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "CSTR_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = CSTR_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "WPT_L,ON\n") == NULL){
+      led_btn.btn_id = CSTR_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = WPT_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "WPT_L,OFF\n") == NULL){
+      led_btn.btn_id = WPT_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "WPT_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = WPT_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "VOR.D_L,ON\n") == NULL){
+      led_btn.btn_id = WPT_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = VOR_D_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "VOR.D_L,OFF\n") == NULL){
+      led_btn.btn_id = VOR_D_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "VOR.D_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = VOR_D_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "NDB_L,ON\n") == NULL){
+      led_btn.btn_id = VOR_D_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = NDB_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "NDB_L,OFF\n") == NULL){
+      led_btn.btn_id = NDB_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "NDB_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = NDB_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ARPT_L,ON\n") == NULL){
+      led_btn.btn_id = NDB_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = ARPT_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "ARPT_L,OFF\n") == NULL){
+      led_btn.btn_id = ARPT_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "ARPT_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = ARPT_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_LG,ON\n") == NULL){
+      led_btn.btn_id = ARPT_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_PG,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = F_O_LG_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_LG,OFF\n") == NULL){
+      led_btn.btn_id = F_O_PG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_PG,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = F_O_LG_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_LR,ON\n") == NULL){
+      led_btn.btn_id = F_O_PG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_PR,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = F_O_LR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_LR,OFF\n") == NULL){
+      led_btn.btn_id = F_O_PR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_PR,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = F_O_LR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_L,ON\n") == NULL){
+      led_btn.btn_id = F_O_PR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = MASTER_WARM_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_L,OFF\n") == NULL){
+      led_btn.btn_id = MASTER_WARM_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = MASTER_WARM_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_L,ON\n") == NULL){
+      led_btn.btn_id = MASTER_WARM_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_P,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = MASTER_CAUT_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_L,OFF\n") == NULL){
+      led_btn.btn_id = MASTER_CAUT_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_P,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = MASTER_CAUT_L_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_RG,ON\n") == NULL){
+      led_btn.btn_id = MASTER_CAUT_P_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_CG,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = F_O_RG_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_RG,OFF\n") == NULL){
+      led_btn.btn_id = F_O_CG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_CG,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = F_O_RG_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_RR,ON\n") == NULL){
+      led_btn.btn_id = F_O_CG_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_CR,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = F_O_RR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "F/O_RR,OFF\n") == NULL){
+      led_btn.btn_id = F_O_CR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "F/O_CR,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = F_O_RR_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_R,ON\n") == NULL){
+      led_btn.btn_id = F_O_CR_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = MASTER_WARM_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_R,OFF\n") == NULL){
+      led_btn.btn_id = MASTER_WARM_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_WARM_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = MASTER_WARM_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_R,ON\n") == NULL){
+      led_btn.btn_id = MASTER_WARM_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_C,ON\n") == NULL){
       led_btn.led_state = on_mode;
-      led_btn.btn_id = MASTER_CAUT_R_PRESS;
-    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_R,OFF\n") == NULL){
+      led_btn.btn_id = MASTER_CAUT_C_PRESS;
+    } else if(strcmp(led_btn.btn_name, "MASTER_CAUT_C,OFF\n") == NULL){
       led_btn.led_state = off_mode;
-      led_btn.btn_id = MASTER_CAUT_R_PRESS;
+      led_btn.btn_id = MASTER_CAUT_C_PRESS;
     } else if(strcmp(led_btn.btn_name, "FULLY,ON\n") == NULL){
       led_btn.led_state = on_mode;
       led_btn.btn_id = FULLY_PRESS;
