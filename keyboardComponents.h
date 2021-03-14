@@ -29,8 +29,8 @@
 
 #define DEFAULT_STEP 1 // default encoder step amount
 // ***************************************************
-#define test_time 20 // time for delay in test led array
-#define test_time_l 100 // time for long delay in test led array
+#define test_time 100 // time for delay in test led array
+#define test_time_l 500 // time for long delay in test led array
 
 uint8_t CATHODES[] = {31, 33, 35, 37, 41, 45, 49}; // cathodes leds pins assignment - columns
 uint8_t ANODES[] = {53, 51, 47, 43, 39}; // anodes leds pins assignment - rows
@@ -58,6 +58,7 @@ uint8_t ADC_PINS[] = {A1, A0, A2, A3};
 uint8_t idx, jdx, tdx, rdx; // counters index
 
 long int time_counter = 0; // define time counter data type and value
+long int time_push_pull = 0;
 char *char_ptr = NULL;
 char char_string[str_buf] = ""; // a char array to hold incoming data
 
@@ -93,7 +94,13 @@ enum {
   VOR,
   NAV,
   ARC,
-  PLAN
+  PLAN,
+  EFI10R,
+  EFI20R,
+  EFI40R,
+  EFI80R,
+  EFI160R,
+  EFI320R
 };
 
 enum {
@@ -176,6 +183,10 @@ struct sw_btn_t {
   
 };
 
+static void ISR_time(){ // interrupt service rutine of timer one
+  time_counter++; // increment counter in time assigned
+}
+
 static void lets_started(){
   Serial.print("\n\n Starting MainKeyboard") ; // it works for beautify the code, there are so much of this on whole code
   for (idx = 0; idx < random(2, 6); idx++){
@@ -197,6 +208,10 @@ static void lets_started(){
 }
 
 static void arrays_initialise(){ // initialise function shows the button array configuration
+  Serial.begin(115200); // begin serial communication
+  //inputString.reserve(100);
+  Timer1.attachInterrupt(ISR_time);
+  Timer1.initialize(1000);
  for (idx = 0; idx < 14; idx++){
     Serial.print("#");
     delay(10);
@@ -298,26 +313,26 @@ static void switch_handle(sw_btn_t sw_status) {
   switch(sw_status.sw_state){
     case ADF_AKC:
         Serial.print(sw_status.sw_name);
-        Serial.print("\tADF_AKC\n\r");
+        Serial.print(",ADF\n\r");
     break;
     
     case VOR_AKC:
         Serial.print(sw_status.sw_name);
-        Serial.print("\tVOR_AKC\n\r");
+        Serial.print(",VOR\n\r");
     break;
     
     case OFF_AKC:
         Serial.print(sw_status.sw_name);
-        Serial.print("\tOFF_AKC\n\r");
+        Serial.print(",OFF\n\r");
     break;
 
     case HOLD_AKC:
         Serial.print(sw_status.sw_name);
-        Serial.print("\tHOLD_AKC\n\r");        
+        Serial.print(",HOLD\n\r");        
     break;
     
     default:
-    
+        Serial.print("error - swithes \n\r"); 
     break;
   }
 }
@@ -347,57 +362,7 @@ static void switch_scan() {
   }
 }
 
-encoder_pulses_t encoder_btn[size_array(ENCODER_COLUMNS)]; // array of structures to characterize the encoders
 
-static void encoder_initialise(){
-  Serial.print("\n\n\r Initialising encoder configuration!");
-  for (idx = 0; idx < size_array(ENCODER_COLUMNS); ++idx){
-    encoder_btn[idx].column = ENCODER_COLUMNS[idx];
-    encoder_btn[idx].name = ENCODER_NAME[idx];
-    for (jdx = 0; jdx < size_array(ENCODER_ROWS); ++jdx) {
-      encoder_btn[idx].rows[jdx] = ENCODER_ROWS[jdx]; // clk, dt, sw
-      delay(5);
-    }
-    pinMode(encoder_btn[idx].column, OUTPUT);
-    digitalWrite(encoder_btn[idx].column , on_mode);
-    Serial.print(".");
-    delay(5);
-  }
-  for (idx = 0; idx < size_array(ENCODER_ROWS); ++idx){
-    pinMode(encoder_btn[0].rows, INPUT);
-    delay(5);
-  }
-  Serial.print("\n\n\r Encoder confituration done!\n\n\n\r");
-}
-
-static void encoder_columns_rst(){ // set all button in no press mode
-  for (tdx = 0; tdx < size_array(ENCODER_COLUMNS); tdx++){ // sweep the six different columns in the button array.
-    digitalWrite(encoder_btn[tdx].column, on_mode); // reset the all outputs
-  }
-}
-
-static void encoder_scan() {
-  for (idx = 0; idx < size_array (ENCODER_COLUMNS); ++idx){
-    encoder_columns_rst();
-    digitalWrite(encoder_btn[idx].column, off_mode);
-    if(!digitalRead(encoder_btn[idx].rows[0]) < !digitalRead(encoder_btn[idx].rows[1])){
-      // do somenthing
-      Serial.print(encoder_btn[idx].name);
-      Serial.print(",INC\n\r");
-      delay(250);
-    } else if(!digitalRead(encoder_btn[idx].rows[0]) > !digitalRead(encoder_btn[idx].rows[1])){
-      // do somenthing
-      Serial.print(encoder_btn[idx].name);
-      Serial.print(",DEC\n\r");
-      delay(250);
-    } else if(!digitalRead(encoder_btn[idx].rows[2])){
-      // do somenthing
-      Serial.print(encoder_btn[idx].name);
-      Serial.print(",ENTER\n\r");
-      while(!digitalRead(encoder_btn[idx].rows[2])){};
-    }
-  }
-}
 
 adc_pot_t adc_knobs[size_array(ADC_PINS)]; // array of structures to characterize the analogic inputs
 
@@ -445,25 +410,135 @@ static void adc_scan() {
         adc_knobs[idx].pot_state = PLAN;
         adc_knobs[idx].pos_select = ADC_POS[4];
       }
-      if (adc_knobs[idx].last_pot_state != adc_knobs[idx].pot_state){
-        Serial.print(adc_knobs[idx].pot_name);
-        Serial.print("\t");
-        Serial.print(adc_knobs[idx].pos_select);
-        Serial.print("\n\r");
-        adc_knobs[idx].last_pot_state = adc_knobs[idx].pot_state;
-      }    
-    } else {
-      adc_knobs[idx].adc_val = (map(adc_knobs[idx].adc_val, 0, 113, 10, 320));
-      if( adc_knobs[idx].last_adc_val != adc_knobs[idx].adc_val){
-        Serial.print(adc_knobs[idx].pot_name);
-        Serial.print("\t");
-        Serial.print(adc_knobs[idx].adc_val);
-        Serial.print("\n\r");
-        adc_knobs[idx].last_adc_val = adc_knobs[idx].adc_val;
+      switch(adc_knobs[idx].pot_state){
+        case LS:
+          if (adc_knobs[idx].last_pot_state == VOR){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case VOR:
+          if (adc_knobs[idx].last_pot_state == LS){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == NAV){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case NAV:
+          if (adc_knobs[idx].last_pot_state == VOR){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == ARC){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case ARC:
+          if (adc_knobs[idx].last_pot_state == NAV){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == PLAN){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case PLAN:
+          if (adc_knobs[idx].last_pot_state == ARC){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          }
+        break;
+
+        default:
+          Serial.print("error in potentiometers - adc converter\n\r");
+        break;
       }
+      adc_knobs[idx].last_pot_state = adc_knobs[idx].pot_state;
+    } else {
+      adc_knobs[idx].pot_state = NULL;
+      if(adc_knobs[idx].adc_val >= 0 && adc_knobs[idx].adc_val < 10){
+        adc_knobs[idx].pot_state = EFI10R;
+      } else if(adc_knobs[idx].adc_val >= 10 && adc_knobs[idx].adc_val < 30){
+        adc_knobs[idx].pot_state = EFI20R;
+      } else if(adc_knobs[idx].adc_val >= 30 && adc_knobs[idx].adc_val < 50){
+        adc_knobs[idx].pot_state = EFI40R;
+      } else if(adc_knobs[idx].adc_val >= 50 && adc_knobs[idx].adc_val < 70){
+        adc_knobs[idx].pot_state = EFI80R;
+      } else if(adc_knobs[idx].adc_val >= 70 && adc_knobs[idx].adc_val < 90){
+        adc_knobs[idx].pot_state = EFI160R;
+      } else if(adc_knobs[idx].adc_val >= 90){
+        adc_knobs[idx].pot_state = EFI320R;
+      }
+
+      switch(adc_knobs[idx].pot_state){
+        case EFI10R:
+          if (adc_knobs[idx].last_pot_state == EFI20R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case EFI20R:
+          if (adc_knobs[idx].last_pot_state == EFI10R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == EFI40R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case EFI40R:
+          if (adc_knobs[idx].last_pot_state == EFI20R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == EFI80R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case EFI80R:
+          if (adc_knobs[idx].last_pot_state == EFI40R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == EFI160R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case EFI160R:
+          if (adc_knobs[idx].last_pot_state == EFI80R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } else if (adc_knobs[idx].last_pot_state == EFI320R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",DEC\n\r");
+          }
+        break;
+        case EFI320R:
+          if (adc_knobs[idx].last_pot_state == EFI160R){
+            Serial.print(adc_knobs[idx].pot_name);
+            Serial.print(",INC\n\r");
+          } 
+        break;
+
+        default:
+          Serial.print("error in potentiometers - adc converter\n\r");
+        break;
+      }
+      adc_knobs[idx].last_pot_state = adc_knobs[idx].pot_state;
     }
   }
 }
+/*
+  EFI10R
+  EFI20R
+  EFI40R
+  EFI80R
+  EFI160R
+  EFI320R
+*/
+
 
 key_btn_t push_key_btn[keys_Qty]; //  array of structures to quantify the key button
 
@@ -588,7 +663,7 @@ static void testing_led_array_t(){ // test all led button array
       digitalWrite(push_led_btn[rdx].led_column, on_mode);
     }
   }
-  for (idx = 0; idx < 2; ++idx){
+  for (idx = 0; idx < 1; ++idx){
     delay(test_time_l);
     for (rdx = 0; rdx < size_array(push_led_btn); ++rdx){
       digitalWrite(push_led_btn[rdx].led_row, on_mode);
@@ -620,7 +695,7 @@ static void led_swept_t(){ // swept each led button state
       if (push_led_btn[rdx].led_state){ // just when the state is high, set the led button in on mode
           digitalWrite(push_led_btn[rdx].led_row, push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, !push_led_btn[rdx].led_state);
-          delayMicroseconds(500); // return to off mode for avoid error with two or more started leds
+          delayMicroseconds(750); // return to off mode for avoid error with two or more started leds
           digitalWrite(push_led_btn[rdx].led_row, !push_led_btn[rdx].led_state);
           digitalWrite(push_led_btn[rdx].led_column, push_led_btn[rdx].led_state);  
         } else {
@@ -823,6 +898,69 @@ static void led_pos_handler(led_btn_t led_btn){ // this function handle the butt
   }
 }
 
+encoder_pulses_t encoder_btn[size_array(ENCODER_COLUMNS)]; // array of structures to characterize the encoders
+
+static void encoder_initialise(){
+  Serial.print("\n\n\r Initialising encoder configuration!");
+  for (idx = 0; idx < size_array(ENCODER_COLUMNS); ++idx){
+    encoder_btn[idx].column = ENCODER_COLUMNS[idx];
+    encoder_btn[idx].name = ENCODER_NAME[idx];
+    for (jdx = 0; jdx < size_array(ENCODER_ROWS); ++jdx) {
+      encoder_btn[idx].rows[jdx] = ENCODER_ROWS[jdx]; // clk, dt, sw
+    }
+    pinMode(encoder_btn[idx].column, OUTPUT);
+    digitalWrite(encoder_btn[idx].column , on_mode);
+    Serial.print(".");
+  }
+  for (idx = 0; idx < size_array(ENCODER_ROWS); ++idx){
+    pinMode(encoder_btn[0].rows, INPUT);
+  }
+  Serial.print("\n\n\r Encoder confituration done!\n\n\n\r");
+}
+
+static void encoder_columns_rst(){ // set all button in no press mode
+  for (tdx = 0; tdx < size_array(ENCODER_COLUMNS); tdx++){ // sweep the six different columns in the button array.
+    digitalWrite(encoder_btn[tdx].column, on_mode); // reset the all outputs
+  }
+}
+
+static void encoder_scan() {
+  for (idx = 0; idx < size_array (ENCODER_COLUMNS); ++idx){
+    encoder_columns_rst();
+    digitalWrite(encoder_btn[idx].column, off_mode);
+    
+    if(!digitalRead(encoder_btn[idx].rows[0]) < !digitalRead(encoder_btn[idx].rows[1])){
+      Serial.print(encoder_btn[idx].name);
+      Serial.print(",INC\n\r");
+      led_swept_t();
+      delay(100);
+      led_swept_t();
+    } else if(!digitalRead(encoder_btn[idx].rows[0]) > !digitalRead(encoder_btn[idx].rows[1])){
+      Serial.print(encoder_btn[idx].name);
+      Serial.print(",DEC\n\r");
+      led_swept_t();
+      delay(100);
+      led_swept_t();
+    } else if(!digitalRead(encoder_btn[idx].rows[2])){
+
+      time_counter = 0;
+
+      while(!digitalRead(encoder_btn[idx].rows[2])){
+        led_swept_t();
+        Serial.print("\r");
+      }
+
+      if (time_counter <= 1000) {
+        Serial.print(encoder_btn[idx].name);
+        Serial.print(",PUSH\n\r");  
+      } else if (time_counter > 1000){
+        Serial.print(encoder_btn[idx].name);
+        Serial.print(",PULL\n\r");  
+      }
+    }
+  }
+}
+
 static void toggle_btn_t(char *btn_name_id){ // main function to call the handler, assign the ident from main function of the program
   struct led_btn_t button; //  set the variable for the led structure
   button.btn_name = btn_name_id; //  set the button name to the structure
@@ -833,7 +971,10 @@ static void toggle_btn_t(char *btn_name_id){ // main function to call the handle
 
 static void keyboard_scan_t(){
   led_swept_t(); // swept the leds states
-  
+  //digitalWrite(43,on_mode);
+  //digitalWrite(33,off_mode);
+
+
   for (jdx = 0; jdx < size_array(COLUMNS); jdx++){ //  scan each button to determine if this was pressed
     pin_rst(); // reseting the columns
     digitalWrite(COLUMNS[jdx], off_mode); // able the correct column of button array
