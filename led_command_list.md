@@ -2,7 +2,9 @@
 
 The command that you can send to the led array in the mainkeyboard are presented so:
 
-## NAME COMMAND + "," + ON or OFF + new line (\n)
+### NAME COMMAND + "," + ON or OFF + new line (\n)
+
+you get the following commands to active each led in the board:
 
     LOC,ON\n
     LOC,OFF\n
