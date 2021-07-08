@@ -13,8 +13,5 @@ void loop(){
   if (serialEvent_handler()){
     toggle_btn_t(serialReceive()); // call led button toggle function if it's available  
   }
-  adc_scan();
-  switch_scan();
-  encoder_scan();
-  keyboard_scan_t();
+
 }
