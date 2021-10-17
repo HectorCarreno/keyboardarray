@@ -37,6 +37,7 @@ The commands to access to each led in the keyboard array you can find [here!](le
 	- AUTOPILOT v1.0 (Stable)
 	- AUTOPILOT v1.1 (Stable -  Full functions)
 
-
+# AUTO BREAK PANEL
+Added the auto break panel to the tag AUTO_BRK_v1.0
 
 These versions have gotten a keyboard components on a external file called KeyboardComponents.h. This header file have all handlers for each components of this project, we can to say that it is a library using C++ and C. You can to check each components of that library and identify the purpose for each one of them following the comments. Any question you can ask me via email or github repository.
