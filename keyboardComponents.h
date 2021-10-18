@@ -193,7 +193,7 @@ static void switch_scan() {
     if (!digitalRead(sw_button[idx].sw_pin)){
       sw_button[idx].sw_state = HOLD;
       if(idx == 6){
-        delay(50);
+        delay(50); // <------ You can to modify this delay if 50 ms is not enough to filter mechanical vibrations and wrong reading.
       }
     } else {
       sw_button[idx].sw_state = OFF;
@@ -398,9 +398,9 @@ static void led_pos_handler(led_btn_t led_btn){ // this function handle the butt
       led_btn.led_state = off_mode;
       led_btn.btn_id = LO_DEC_ON_AUTO_BRK_PRESS;
     } else if(strcmp(led_btn.btn_name, "ELECTRIC_BUS,ON\n") == NULL){
-      digitalWrite(RELAY, on_mode);
-    } else if(strcmp(led_btn.btn_name, "ELECTRIC_BUS,OFF\n") == NULL){
       digitalWrite(RELAY, off_mode);
+    } else if(strcmp(led_btn.btn_name, "ELECTRIC_BUS,OFF\n") == NULL){
+      digitalWrite(RELAY, on_mode);
     } else if(strcmp(led_btn.btn_name, "FULLY,ON\n") == NULL){
       led_btn.led_state = on_mode;
       led_btn.btn_id = FULLY_PRESS;
